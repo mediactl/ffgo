@@ -384,6 +384,22 @@ func (d *Decoder) DurationMicroseconds() int64 {
 	return avformat.GetDuration(d.formatCtx)
 }
 
+// StartTime is the input's first timestamp: the earliest stream's start,
+// as FFmpeg's demuxer computes it (an MPEG-TS starts near 1.4 s, most
+// Matroska at 0). It is 0 when the input reports none. ffmpeg(1) shifts
+// every timestamp back by it unless told -copyts; a remuxer doing as
+// ffmpeg(1) does subtracts it.
+func (d *Decoder) StartTime() time.Duration {
+	if d.formatCtx == nil {
+		return 0
+	}
+	us := avformat.GetStartTime(d.formatCtx)
+	if us == avutil.AV_NOPTS_VALUE {
+		return 0
+	}
+	return time.Duration(us) * time.Microsecond
+}
+
 // DurationTime is an alias for Duration for backward compatibility.
 // Deprecated: Use Duration() instead.
 func (d *Decoder) DurationTime() time.Duration {

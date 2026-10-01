@@ -439,6 +439,11 @@ var (
 	offsetProbeScore      = layout.Offset("AVFormatContext.probe_score", 300) // int probe_score
 )
 
+// offsetStartTime is AVFormatContext.start_time, the int64 every release
+// declares immediately before duration: derived from duration's offset, so
+// the shim's layout table (which predates it) places it on every release.
+var offsetStartTime = offsetDuration - 8
+
 // AVChapter struct field offsets (for FFmpeg 6.x)
 const ()
 
@@ -655,6 +660,16 @@ func GetStream(ctx FormatContext, index int) Stream {
 }
 
 // GetDuration returns the duration in AV_TIME_BASE units.
+// GetStartTime returns the input's start time in AV_TIME_BASE units:
+// the earliest stream's first timestamp (an MPEG-TS starts near 1.4 s), or
+// AV_NOPTS_VALUE when unknown.
+func GetStartTime(ctx FormatContext) int64 {
+	if ctx == nil {
+		return 0
+	}
+	return *(*int64)(unsafe.Pointer(uintptr(ctx) + offsetStartTime))
+}
+
 func GetDuration(ctx FormatContext) int64 {
 	if ctx == nil {
 		return 0
