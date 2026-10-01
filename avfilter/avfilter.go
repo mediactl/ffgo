@@ -38,7 +38,10 @@ var (
 	avfilter_graph_free          func(graph *Graph)
 	avfilter_graph_config        func(graphctx, log_ctx uintptr) int32
 	avfilter_graph_parse2        func(graph uintptr, filters *byte, inputs, outputs *InOut) int32
-	avfilter_graph_create_filter func(filt_ctx *Context, filt, namePtr, argsPtr, opaque, graphCtx uintptr) int32
+	// name and args are *byte, not uintptr: purego keeps a pointer argument
+	// alive for the call, and a uintptr keeps nothing, so the collector
+	// could free (and another goroutine reuse) a string C was still reading.
+	avfilter_graph_create_filter func(filt_ctx *Context, filt uintptr, name, args *byte, opaque, graphCtx uintptr) int32
 	avfilter_graph_alloc_filter  func(graph, filter uintptr, name string) uintptr
 	avfilter_init_str            func(ctx uintptr, args string) int32
 
@@ -213,8 +216,8 @@ func GraphCreateFilter(graph Graph, filter Filter, name, args string) (Context, 
 	ret := avfilter_graph_create_filter(
 		&ctx,
 		uintptr(filter),
-		uintptr(unsafe.Pointer(cString(name))),
-		uintptr(unsafe.Pointer(cString(args))),
+		cString(name),
+		cString(args),
 		0,
 		uintptr(graph),
 	)
