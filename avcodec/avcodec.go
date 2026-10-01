@@ -45,6 +45,8 @@ var (
 	avcodecParametersToCtx   func(ctx, par uintptr) int32
 	avcodecParametersFromCtx func(par, ctx uintptr) int32
 	avcodecParametersCopy    func(dst, src uintptr) int32
+	avcodecParametersAlloc   func() uintptr
+	avcodecParametersFree    func(par *uintptr)
 
 	avPacketAlloc func() uintptr
 	avPacketFree  func(pkt *unsafe.Pointer)
@@ -92,6 +94,8 @@ func registerBindings() {
 	purego.RegisterLibFunc(&avcodecParametersToCtx, lib, "avcodec_parameters_to_context")
 	purego.RegisterLibFunc(&avcodecParametersFromCtx, lib, "avcodec_parameters_from_context")
 	purego.RegisterLibFunc(&avcodecParametersCopy, lib, "avcodec_parameters_copy")
+	purego.RegisterLibFunc(&avcodecParametersAlloc, lib, "avcodec_parameters_alloc")
+	purego.RegisterLibFunc(&avcodecParametersFree, lib, "avcodec_parameters_free")
 
 	purego.RegisterLibFunc(&avPacketAlloc, lib, "av_packet_alloc")
 	purego.RegisterLibFunc(&avPacketFree, lib, "av_packet_free")
@@ -324,6 +328,24 @@ func ParametersCopy(dst, src Parameters) error {
 		return avutil.NewError(ret, "avcodec_parameters_copy")
 	}
 	return nil
+}
+
+// ParametersAlloc allocates empty codec parameters; free them with ParametersFree.
+func ParametersAlloc() Parameters {
+	if avcodecParametersAlloc == nil {
+		return nil
+	}
+	return Parameters(unsafe.Pointer(avcodecParametersAlloc()))
+}
+
+// ParametersFree frees codec parameters and sets *par to nil.
+func ParametersFree(par *Parameters) {
+	if avcodecParametersFree == nil || par == nil || *par == nil {
+		return
+	}
+	p := uintptr(*par)
+	avcodecParametersFree(&p)
+	*par = nil
 }
 
 // AVCodecParameters struct field offsets

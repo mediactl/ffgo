@@ -186,6 +186,14 @@ void ffshim_stream_set_disposition(void *st, int d);
 int ffshim_codecpar_ch_layout_describe(void *par, char *buf, size_t size);
 int ffshim_frame_ch_layout_describe(void *frame, char *buf, size_t size);
 
+/* Side data. */
+void *ffshim_frame_side_data(void *frame, int type, size_t *size);
+int ffshim_frame_add_side_data(void *frame, int type, const void *data, size_t size);
+int ffshim_codecpar_side_data_get(void *par, int type, void **data, size_t *size);
+int ffshim_codecpar_side_data_set(void *par, int type, const void *data, size_t size);
+int ffshim_codecpar_nb_side_data(void *par);
+int ffshim_codecctx_add_decoded_side_data(void *ctx, int type, const void *data, size_t size);
+
 #ifdef __cplusplus
 }
 #endif

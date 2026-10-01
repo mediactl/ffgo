@@ -54,6 +54,7 @@ var (
 	avChannelLayoutCopy    func(dst, src uintptr) int32
 
 	avChannelLayoutFromString func(chLayout uintptr, str string) int32
+	avFrameRemoveSideData     func(frame uintptr, typ int32)
 	avChannelLayoutUninit     func(chLayout uintptr)
 
 	// AVOptions API (for setting codec options like preset, profile, etc.)
@@ -121,6 +122,7 @@ func registerBindings() {
 	purego.RegisterLibFunc(&avChannelLayoutDefault, lib, "av_channel_layout_default")
 	purego.RegisterLibFunc(&avChannelLayoutCopy, lib, "av_channel_layout_copy")
 	purego.RegisterLibFunc(&avChannelLayoutFromString, lib, "av_channel_layout_from_string")
+	purego.RegisterLibFunc(&avFrameRemoveSideData, lib, "av_frame_remove_side_data")
 	purego.RegisterLibFunc(&avChannelLayoutUninit, lib, "av_channel_layout_uninit")
 
 	// AVOptions API
@@ -535,6 +537,13 @@ func ChannelLayoutFromString(chLayout unsafe.Pointer, name string) error {
 		return NewError(ret, "av_channel_layout_from_string "+name)
 	}
 	return nil
+}
+
+// FrameRemoveSideData removes a frame's side data of one AVFrameSideDataType.
+func FrameRemoveSideData(frame Frame, typ int32) {
+	if avFrameRemoveSideData != nil && frame != nil {
+		avFrameRemoveSideData(uintptr(frame), typ)
+	}
 }
 
 // ChannelLayoutUninit frees what an AVChannelLayout holds (a custom map).

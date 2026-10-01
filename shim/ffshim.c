@@ -830,3 +830,87 @@ int ffshim_codecpar_ch_layout_describe(void *par, char *buf, size_t size) {
 int ffshim_frame_ch_layout_describe(void *frame, char *buf, size_t size) {
     return av_channel_layout_describe(&((AVFrame *)frame)->ch_layout, buf, size);
 }
+
+/* ============================================================================
+ * SIDE DATA (frames, stream codec parameters, encoder decoded side data)
+ * ============================================================================ */
+
+#include <libavcodec/packet.h>
+
+/* A frame's side data of one type: its bytes and size, or NULL. */
+void *ffshim_frame_side_data(void *frame, int type, size_t *size) {
+    AVFrameSideData *sd = av_frame_get_side_data((AVFrame *)frame, (enum AVFrameSideDataType)type);
+    if (!sd) return NULL;
+    *size = sd->size;
+    return sd->data;
+}
+
+/* Adds (a copy of) side data to a frame, replacing one of the same type. */
+int ffshim_frame_add_side_data(void *frame, int type, const void *data, size_t size) {
+    av_frame_remove_side_data((AVFrame *)frame, (enum AVFrameSideDataType)type);
+    AVFrameSideData *sd = av_frame_new_side_data((AVFrame *)frame, (enum AVFrameSideDataType)type, size);
+    if (!sd) return AVERROR(ENOMEM);
+    if (size) memcpy(sd->data, data, size);
+    return 0;
+}
+
+/* AVCodecParameters.coded_side_data arrived in libavcodec 60.31 (FFmpeg 6.1). */
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(60, 31, 100)
+#define FFSHIM_HAVE_CODED_SIDE_DATA 1
+#endif
+
+int ffshim_codecpar_side_data_get(void *par, int type, void **data, size_t *size) {
+#ifdef FFSHIM_HAVE_CODED_SIDE_DATA
+    AVCodecParameters *p = par;
+    const AVPacketSideData *sd = av_packet_side_data_get(p->coded_side_data, p->nb_coded_side_data,
+                                                         (enum AVPacketSideDataType)type);
+    if (!sd) return -1;
+    *data = sd->data;
+    *size = sd->size;
+    return 0;
+#else
+    (void)par; (void)type; (void)data; (void)size;
+    return AVERROR(ENOSYS);
+#endif
+}
+
+/* Sets stream side data of one type (a copy), replacing one of that type. */
+int ffshim_codecpar_side_data_set(void *par, int type, const void *data, size_t size) {
+#ifdef FFSHIM_HAVE_CODED_SIDE_DATA
+    AVCodecParameters *p = par;
+    AVPacketSideData *sd = av_packet_side_data_new(&p->coded_side_data, &p->nb_coded_side_data,
+                                                   (enum AVPacketSideDataType)type, size, 0);
+    if (!sd) return AVERROR(ENOMEM);
+    if (size) memcpy(sd->data, data, size);
+    return 0;
+#else
+    (void)par; (void)type; (void)data; (void)size;
+    return AVERROR(ENOSYS);
+#endif
+}
+
+int ffshim_codecpar_nb_side_data(void *par) {
+#ifdef FFSHIM_HAVE_CODED_SIDE_DATA
+    return ((AVCodecParameters *)par)->nb_coded_side_data;
+#else
+    (void)par;
+    return AVERROR(ENOSYS);
+#endif
+}
+
+/* Side data an encoder reads before its first frame (mastering display,
+   light level): AVCodecContext.decoded_side_data, libavcodec 61 (FFmpeg 7.0). */
+int ffshim_codecctx_add_decoded_side_data(void *ctx, int type, const void *data, size_t size) {
+#if LIBAVCODEC_VERSION_MAJOR >= 61
+    AVCodecContext *c = ctx;
+    AVFrameSideData *sd = av_frame_side_data_new(&c->decoded_side_data, &c->nb_decoded_side_data,
+                                                 (enum AVFrameSideDataType)type, size,
+                                                 AV_FRAME_SIDE_DATA_FLAG_REPLACE);
+    if (!sd) return AVERROR(ENOMEM);
+    if (size) memcpy(sd->data, data, size);
+    return 0;
+#else
+    (void)ctx; (void)type; (void)data; (void)size;
+    return AVERROR(ENOSYS);
+#endif
+}
