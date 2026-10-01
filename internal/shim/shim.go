@@ -31,6 +31,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"unsafe"
 
@@ -144,24 +145,22 @@ func Load() error {
 		return loadErr
 	}
 
-	path, err := findShimLibrary()
+	// A shim is only safe with the FFmpeg release it was linked against:
+	// another release's shim drags its own libraries in beside the loaded
+	// ones. FFmpeg is loaded first so the release is known, and the search
+	// passes over another release's shim to the next candidate.
+	accept := func(string) (bool, string) { return true, "" }
+	if bindings.Load() == nil {
+		if set, ok := bindings.LoadedVersionSet(); ok {
+			accept = func(path string) (bool, string) { return shimMatchesRelease(path, set) }
+		}
+	}
+	path, err := findShimLibraryAccepting(accept)
 	if err != nil {
 		// Shim is optional, so don't fail - but save detailed error for diagnostics
 		loadErr = err
 		searchErr = err.Error()
 		return nil
-	}
-	// A shim is only safe with the FFmpeg release it was linked against:
-	// another release's shim drags its own libraries in beside the loaded
-	// ones. FFmpeg is loaded first so the release is known.
-	if bindings.Load() == nil {
-		if set, ok := bindings.LoadedVersionSet(); ok {
-			if match, why := shimMatchesRelease(path, set); !match {
-				loadErr = fmt.Errorf("%w: %s", ErrShimNotFound, why)
-				searchErr = loadErr.Error()
-				return nil
-			}
-		}
 	}
 
 	lib, err := purego.Dlopen(path, purego.RTLD_NOW|purego.RTLD_GLOBAL)
@@ -853,6 +852,13 @@ func ProgramMetadata(p unsafe.Pointer) (unsafe.Pointer, error) {
 
 // findShimLibrary looks for the shim library in standard locations.
 func findShimLibrary() (string, error) {
+	return findShimLibraryAccepting(func(string) (bool, string) { return true, "" })
+}
+
+// findShimLibraryAccepting is the shim search, skipping a candidate accept
+// refuses (one built for another FFmpeg release) and going on to the next.
+func findShimLibraryAccepting(accept func(path string) (bool, string)) (string, error) {
+	var rejected []string
 	var names []string
 
 	switch runtime.GOOS {
@@ -871,7 +877,11 @@ func findShimLibrary() (string, error) {
 		for _, name := range names {
 			path := filepath.Join(dir, name)
 			if _, err := os.Stat(path); err == nil {
-				return path, nil
+				if ok, why := accept(path); ok {
+					return path, nil
+				} else {
+					rejected = append(rejected, path+": "+why)
+				}
 			}
 		}
 		return "", fmt.Errorf("%w: FFGO_SHIM_DIR=%s does not contain %s", ErrShimNotFound, dir, names[0])
@@ -954,13 +964,21 @@ func findShimLibrary() (string, error) {
 	for _, name := range names {
 		// Try direct load first (uses system path resolution)
 		if _, err := os.Stat(name); err == nil {
-			return name, nil
+			if ok, why := accept(name); ok {
+				return name, nil
+			} else {
+				rejected = append(rejected, name+": "+why)
+			}
 		}
 
 		for _, dir := range searchPaths {
 			path := filepath.Join(dir, name)
 			if _, err := os.Stat(path); err == nil {
-				return path, nil
+				if ok, why := accept(path); ok {
+					return path, nil
+				} else {
+					rejected = append(rejected, path+": "+why)
+				}
 			}
 			searchedPaths = append(searchedPaths, path)
 		}
@@ -968,6 +986,10 @@ func findShimLibrary() (string, error) {
 
 	// Build detailed error message
 	expectedName := names[0]
+	if len(rejected) > 0 {
+		return "", fmt.Errorf("%w: looked for %s in %d locations; refused %s. Set FFGO_SHIM_DIR or build the shim: cd shim && make",
+			ErrShimNotFound, expectedName, len(searchedPaths), strings.Join(rejected, "; "))
+	}
 	return "", fmt.Errorf("%w: looked for %s in %d locations. Set FFGO_SHIM_DIR or build the shim: cd shim && make",
 		ErrShimNotFound, expectedName, len(searchedPaths))
 }

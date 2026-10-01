@@ -68,8 +68,16 @@ func TestStreamDecoderSendReportsAFullDecoder(t *testing.T) {
 			drain()
 		}
 	}
-	if err := sd.Send(nil); err != nil {
-		t.Fatal(err)
+	for {
+		err := sd.Send(nil)
+		if errors.Is(err, ErrAgain) { // it may still hold input: read it first
+			drain()
+			continue
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		break
 	}
 	drain()
 	if decoded != sent {
@@ -218,5 +226,48 @@ func TestFrameChannelLayout(t *testing.T) {
 	defer f.Free()
 	if got := f.ChannelLayout(); got != "5.1(side)" {
 		t.Errorf("ChannelLayout %q, want 5.1(side)", got)
+	}
+}
+
+// FFmpeg 5.1 drops a packet the decoder still buffers when the flush packet
+// arrives (its bitstream filter marks end of stream first), so Send(nil)
+// refuses with ErrAgain until a Receive has said the decoder wants input.
+func TestStreamDecoderRefusesAFlushWhileItMayHoldInput(t *testing.T) {
+	d, err := NewDecoder(h264Clip(t, 4))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	vi := d.VideoStream().Index
+	sd, err := d.NewStreamDecoder(vi, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sd.Close()
+	for {
+		p, err := d.ReadPacket()
+		if err != nil || p == nil {
+			t.Fatalf("no video packet: %v", err)
+		}
+		if p.StreamIndex() == vi {
+			if err := sd.Send(p); err != nil {
+				t.Fatal(err)
+			}
+			break
+		}
+	}
+	if err := sd.Send(nil); !errors.Is(err, ErrAgain) {
+		t.Fatalf("flush right after a packet: %v, want ErrAgain", err)
+	}
+	for {
+		if _, err := sd.Receive(); err != nil {
+			if !errors.Is(err, ErrAgain) {
+				t.Fatal(err)
+			}
+			break
+		}
+	}
+	if err := sd.Send(nil); err != nil {
+		t.Errorf("flush after the decoder asked for input: %v", err)
 	}
 }

@@ -3,6 +3,7 @@
 package ffgo
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"unsafe"
@@ -33,7 +34,10 @@ type StreamDecoder struct {
 	frame    avutil.Frame
 	timeBase Rational
 	index    int
-	closed   bool
+	// mayHold: a packet went in and no Receive has answered ErrAgain since,
+	// so the decoder may still hold input a flush would drop (FFmpeg 5.1).
+	mayHold bool
+	closed  bool
 }
 
 // NewStreamDecoder opens a decoder for the stream at streamIndex.
@@ -95,8 +99,10 @@ func (d *Decoder) NewStreamDecoder(streamIndex int, cfg *StreamDecoderConfig) (*
 
 // Send gives the decoder a packet of its stream; nil signals end of
 // stream, after which Receive drains the decoder until io.EOF. ErrAgain
-// means the decoder took nothing: Receive its frames, then send the same
-// packet again.
+// means the decoder took nothing: Receive its frames until ErrAgain, then
+// send the same packet again. Send(nil) answers ErrAgain until a Receive
+// has returned ErrAgain since the last packet: FFmpeg 5.1 drops a packet
+// the decoder still buffers when the flush arrives.
 func (s *StreamDecoder) Send(p *Packet) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -106,8 +112,14 @@ func (s *StreamDecoder) Send(p *Packet) error {
 	var pkt avcodec.Packet
 	if p != nil {
 		pkt = p.ptr
+	} else if s.mayHold {
+		return ErrAgain
 	}
-	return avcodec.SendPacketErr(s.ctx, pkt)
+	err := avcodec.SendPacketErr(s.ctx, pkt)
+	if p != nil && err == nil {
+		s.mayHold = true
+	}
+	return err
 }
 
 // Receive returns the next decoded frame: ErrAgain when the decoder needs
@@ -121,6 +133,9 @@ func (s *StreamDecoder) Receive() (Frame, error) {
 	}
 	avutil.FrameUnref(s.frame)
 	if err := avcodec.ReceiveFrame(s.ctx, s.frame); err != nil {
+		if errors.Is(err, ErrAgain) {
+			s.mayHold = false
+		}
 		return Frame{}, err
 	}
 	return Frame{ptr: s.frame, owned: false}, nil
