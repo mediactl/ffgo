@@ -27,6 +27,34 @@ needs. Each change is offered upstream.
   filter graph (`FilterGraphConfig.HWFramesCtx`, e.g. `scale_cuda`) into
   an encoder (`VideoEncoderConfig.HWFramesCtx`) without leaving GPU memory;
   `HWDecoder` drains its last frames at end of file.
+- **Codec IDs resolved by name**: `AVCodecID` values move too (HEVC is 173
+  through FFmpeg 7 and 172 in 9), so `FindEncoder`, `FindDecoder` and
+  `SetCodecParCodecID` resolve ffgo's constants in the loaded release
+  (`avcodec.Resolve`, `avcodec.CodecIDByName`). Compare codec names, not
+  IDs, across releases.
+- **A decoder per stream** (`Decoder.Streams`, `Decoder.NewStreamDecoder`):
+  one demuxer feeds every stream's decoder, each on its own goroutine
+  (`Packet.Clone`); GPU frames stay on the device. `Streams` reports each
+  stream's language, title, disposition and channel layout name.
+- **Packet-level encoders**: `VideoStreamEncoder` keeps each frame's PTS,
+  never drops a frame on `EAGAIN`, rejects codec options the encoder does
+  not have, and takes HDR side data; `AudioEncoder` (AAC) takes frames of
+  any size through an audio FIFO.
+- **Channel layouts by name** (`AudioFormat.Layout`): `5.1(side)` and
+  `7.1` are mixed by position, so 7.1 folds into 5.1 correctly.
+- **Side data**: mastering display and light level read from frames and
+  streams and written to encoders and output streams; HDR10+ and Dolby
+  Vision RPU removable per frame (`Frame.RemoveSideData`).
+- **GPU frame pools and devices on filter graphs** (`NewHWFrames`,
+  `FilterGraphConfig.HWDevice`): `hwupload`, `vpp_qsv` and `scale_vaapi`.
+- **One muxer, many streams**: `Muxer.AddEncoderStream`, `StreamOptions`
+  (language, title, disposition, side data), `AddAttachment`,
+  `SetChapters`, `SetMetadata`.
+
+These additions need the shim built against the loaded FFmpeg; without
+it they return `ErrShimRequired`, and an API the loaded release lacks
+(stream side data before 6.1, encoder side data before 7.0) is
+`ErrNotSupported`.
 
 ## Features
 

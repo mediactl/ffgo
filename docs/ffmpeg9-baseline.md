@@ -68,3 +68,13 @@ FFmpeg 4.x does not load in upstream ffgo either: `avutil` binds the
 channel-layout API that FFmpeg added in 5.1. The fork leaves 4.x as
 upstream has it. CI: `ci.yml` (Ubuntu's FFmpeg, upstream's job) and
 `ffmpeg9.yml` (FFmpeg 9.0 shared).
+
+## After Phase 1 (2026-10-01)
+
+`go test ./... -count=1 -v` on FFmpeg 9.0.1 (this host, RTX 2070 Max-Q):
+**268 passed, 0 skipped, 0 failed**, the GPU tests included. Phase 1 added
+the stream decoder, packet-level encoders, layout-named resampling, side
+data, GPU frame pools, filter-graph devices and the multi-stream muxer,
+and found that `AVCodecID` values move between releases as pixel formats
+do (HEVC 173 → 172 in FFmpeg 9; VP9, AV1, WebP and others moved too);
+ffgo now resolves its constants by name.
