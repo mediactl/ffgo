@@ -46,6 +46,10 @@ var (
 	// ErrNotSupported: the loaded FFmpeg release has no such API (stream
 	// coded side data before FFmpeg 6.1, encoder decoded side data before 7.0).
 	ErrNotSupported = errors.New("ffgo: not supported by the loaded FFmpeg release")
+
+	// ErrAgain: a decoder or encoder needs more input before it gives
+	// output; errors.Is(err, ErrAgain) holds for FFmpeg's AVERROR(EAGAIN).
+	ErrAgain = avutil.ErrAgain
 )
 
 // Error code constants re-exported from avutil

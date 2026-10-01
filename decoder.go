@@ -400,7 +400,9 @@ func (d *Decoder) BitRate() int64 {
 // ReadPacket reads the next packet from the file.
 // Returns (nil, nil) on EOF.
 //
-// The returned packet is BORROWED (decoder-owned and internally reused).
+// The returned packet is BORROWED (decoder-owned and internally reused): it is
+// overwritten by the next ReadPacket, so Clone it before handing it to
+// another goroutine (a StreamDecoder running on its own).
 // Do not free it; if you need to keep it, call PacketClone().
 func (d *Decoder) ReadPacket() (*Packet, error) {
 	d.mu.Lock()

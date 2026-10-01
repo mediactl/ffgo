@@ -317,6 +317,22 @@ func PacketClone(src *Packet) (*Packet, error) {
 // IsNil reports whether the frame pointer is nil.
 func (f Frame) IsNil() bool { return f.ptr == nil }
 
+// Format is the frame's AVPixelFormat (video) or AVSampleFormat (audio).
+func (f Frame) Format() int32 { return avutil.GetFrameFormat(f.ptr) }
+
+// PTS is the frame's presentation timestamp.
+func (f Frame) PTS() int64 { return avutil.GetFramePTS(f.ptr) }
+
+// SetPTS sets the frame's presentation timestamp.
+func (f Frame) SetPTS(pts int64) { avutil.SetFramePTS(f.ptr, pts) }
+
+// NumSamples is an audio frame's sample count per channel.
+func (f Frame) NumSamples() int { return int(avutil.GetFrameNbSamples(f.ptr)) }
+
+// Clone is an owned reference to the packet, safe to keep or hand to
+// another goroutine after the demuxer reads its next packet; free it.
+func (p *Packet) Clone() (*Packet, error) { return PacketClone(p) }
+
 // HWFramesCtx is the GPU frame pool a hardware frame belongs to (nil for a
 // software frame): what a filter graph or encoder fed GPU frames needs.
 func (f Frame) HWFramesCtx() avutil.HWFramesContext { return shim.FrameHWFramesCtx(f.ptr) }

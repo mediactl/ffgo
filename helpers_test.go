@@ -4,6 +4,7 @@ package ffgo
 
 import (
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -57,4 +58,29 @@ func ffprobeFrameCount(t *testing.T, path string, index int) int64 {
 		t.Fatalf("ffprobe frame count %q: %v", out, err)
 	}
 	return n
+}
+
+// cudaOrSkip opens the CUDA device, skipping the test without one.
+func cudaOrSkip(t *testing.T) *HWDevice {
+	t.Helper()
+	if err := Init(); err != nil {
+		t.Skipf("FFmpeg libraries not available: %v", err)
+	}
+	dev, err := NewHWDevice(HWDeviceTypeCUDA, "")
+	if err != nil {
+		t.Skipf("no CUDA device: %v", err)
+	}
+	t.Cleanup(func() { _ = dev.Close() })
+	return dev
+}
+
+// h264Clip is an 8-bit 256x144 H.264 clip of frames frames at 24 fps.
+func h264Clip(t *testing.T, frames int) string {
+	t.Helper()
+	ffmpegOrSkip(t)
+	path := filepath.Join(t.TempDir(), "h264.mkv")
+	run(t, "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+		"-f", "lavfi", "-i", "testsrc2=size=256x144:rate=24", "-frames:v", strconv.Itoa(frames),
+		"-pix_fmt", "yuv420p", "-c:v", "libx264", "-preset", "veryfast", path)
+	return path
 }

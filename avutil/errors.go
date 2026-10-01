@@ -50,10 +50,14 @@ func NewError(code int32, op string) error {
 }
 
 // Is reports whether e is target: FFmpeg's end of stream (AVERROR_EOF) is
-// io.EOF, so callers can use errors.Is(err, io.EOF) as well as IsEOF.
+// io.EOF, and AVERROR(EAGAIN) is ErrAgain, so callers can use errors.Is.
 func (e *Error) Is(target error) bool {
-	return target == io.EOF && e.Code == AVERROR_EOF
+	return (target == io.EOF && e.Code == AVERROR_EOF) || (target == ErrAgain && e.Code == AVERROR_EAGAIN)
 }
+
+// ErrAgain is FFmpeg's AVERROR(EAGAIN) as a sentinel: a decoder or encoder
+// needs more input (or its output read) before it can take more.
+var ErrAgain = errors.New("ffgo: needs more input")
 
 // IsEOF returns true if the error indicates end of file.
 func IsEOF(err error) bool {
