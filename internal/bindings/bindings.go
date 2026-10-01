@@ -62,32 +62,41 @@ func Load() error {
 }
 
 func doLoad() error {
-	// Load libraries in dependency order (CRITICAL per design doc)
-	// avutil must be first, then others that depend on it
-	var err error
-
-	// 1. Load avutil (no dependencies)
-	libAVUtil, err = loadLibrary("avutil", []int{59, 58, 57, 56})
+	sets, err := candidateSets()
 	if err != nil {
-		return fmt.Errorf("loading libavutil: %w", err)
+		return err
+	}
+	// One release's libraries, newest release first, in dependency order
+	// (avutil, then avcodec, then avformat). A release missing any of the
+	// three is skipped whole: mixing releases is how FFmpeg 4.4's libavutil
+	// once loaded beside 9.0 and panicked on a symbol 4.4 does not have.
+	var tried []string
+	for _, set := range sets {
+		u, uerr := loadLibraryExact("avutil", set.AVUtil)
+		c, cerr := loadLibraryExact("avcodec", set.AVCodec)
+		f, ferr := loadLibraryExact("avformat", set.AVFormat)
+		if uerr != nil || cerr != nil || ferr != nil {
+			for _, h := range []uintptr{f, c, u} {
+				if h != 0 {
+					_ = purego.Dlclose(h)
+				}
+			}
+			tried = append(tried, fmt.Sprintf("FFmpeg %d (avutil %d, avcodec %d, avformat %d)", set.FFmpeg, set.AVUtil, set.AVCodec, set.AVFormat))
+			continue
+		}
+		libAVUtil, libAVCodec, libAVFormat = u, c, f
+		chosen := set
+		loadedSet = &chosen
+		break
+	}
+	if loadedSet == nil {
+		return fmt.Errorf("%w: no complete FFmpeg release among %v", ErrLibraryNotFound, tried)
 	}
 
-	// 2. Load avcodec (depends on avutil)
-	libAVCodec, err = loadLibrary("avcodec", []int{61, 60, 59, 58})
-	if err != nil {
-		return fmt.Errorf("loading libavcodec: %w", err)
-	}
+	// swscale is optional, but only the loaded release's.
+	libSWScale, _ = loadLibraryExact("swscale", loadedSet.SWScale)
 
-	// 3. Load avformat (depends on avcodec, avutil)
-	libAVFormat, err = loadLibrary("avformat", []int{61, 60, 59, 58})
-	if err != nil {
-		return fmt.Errorf("loading libavformat: %w", err)
-	}
-
-	// 4. Load swscale (depends on avutil) - optional
-	libSWScale, _ = loadLibrary("swscale", []int{8, 7, 6, 5})
-
-	// 5. Load shim (optional - for logging and AVRational on non-Darwin)
+	// Shim (optional - for logging and AVRational on non-Darwin)
 	libFFShim, _ = loadLibrary("ffshim", []int{0})
 
 	// Register version functions
@@ -100,6 +109,22 @@ func doLoad() error {
 	}
 
 	return nil
+}
+
+// loadLibraryExact opens name at exactly major, from the search paths and
+// then the system loader -- never an unversioned name, which can be any
+// release.
+func loadLibraryExact(name string, major int) (uintptr, error) {
+	libName := platform.FormatLibraryName(name, major)
+	for _, searchPath := range LibrarySearchPaths() {
+		if lib, err := tryOpen(filepath.Join(searchPath, libName)); err == nil {
+			return lib, nil
+		}
+	}
+	if lib, err := tryOpen(libName); err == nil {
+		return lib, nil
+	}
+	return 0, fmt.Errorf("%w: %s", ErrLibraryNotFound, libName)
 }
 
 // loadLibrary attempts to load a library by trying versioned names.
@@ -318,6 +343,12 @@ func LoadLibrary(name string, versions []int) (uintptr, error) {
 	// Ensure core libraries are loaded first
 	if err := Load(); err != nil {
 		return 0, err
+	}
+	// A library the loaded release has a major for is that major only:
+	// a caller's own list (avfilter asked for 10-7) found FFmpeg 4.4's
+	// libraries beside 9.0's.
+	if major := loadedSet.major(name); major != 0 {
+		return loadLibraryExact(name, major)
 	}
 	return loadLibrary(name, versions)
 }
