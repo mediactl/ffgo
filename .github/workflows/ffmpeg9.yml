@@ -1,0 +1,47 @@
+# The whole test suite against FFmpeg 9.0 shared libraries (mediactl fork).
+#
+# ci.yml covers the distribution's FFmpeg (Ubuntu's 6.x). This job covers
+# 9.0, whose struct layouts differ from the Go offsets (written for 6/7):
+# the shim is built against 9.0's headers, and ffgo reads structs through it.
+name: FFmpeg 9
+
+on:
+  push:
+    branches: [master, main, 'clustarr/**']
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  test-ffmpeg9-linux:
+    runs-on: ubuntu-latest
+    name: Test (Linux amd64, FFmpeg 9.0)
+    env:
+      FFMPEG_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-linux64-gpl-shared-9.0.tar.xz
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install FFmpeg 9.0 shared libraries and headers
+        run: |
+          curl -fsSL -o /tmp/ffmpeg.tar.xz "$FFMPEG_URL"
+          sudo mkdir -p /opt/ffmpeg
+          sudo tar -xJf /tmp/ffmpeg.tar.xz --strip-components=1 -C /opt/ffmpeg
+          /opt/ffmpeg/bin/ffmpeg -hide_banner -version | head -1
+          echo "/opt/ffmpeg/bin" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=/opt/ffmpeg/lib" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_PATH=/opt/ffmpeg/lib/pkgconfig" >> "$GITHUB_ENV"
+
+      - name: Build the shim against FFmpeg 9.0
+        working-directory: shim
+        run: ./build.sh
+
+      - name: Run tests
+        run: go test -v -count=1 ./...
+        env:
+          CGO_ENABLED: "0"
+          FFGO_FFMPEG_MAJOR: "9"
+          FFGO_SHIM_DIR: ${{ github.workspace }}/shim

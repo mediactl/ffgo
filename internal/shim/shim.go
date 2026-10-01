@@ -35,6 +35,8 @@ import (
 	"unsafe"
 
 	"github.com/ebitengine/purego"
+
+	"github.com/obinnaokechukwu/ffgo/internal/bindings"
 )
 
 // ErrShimNotLoaded is returned when shim functions are called but the shim is not available.
@@ -91,12 +93,12 @@ var (
 	shimCodecCtxSetHWFrames  func(ctx uintptr, ref uintptr)
 
 	// AVFormatContext / chapter / program helpers (optional)
-	shimFormatCtxDuration    func(ctx uintptr) int64
-	shimFormatCtxBitRate     func(ctx uintptr) int64
-	shimFormatCtxNbChapters  func(ctx uintptr) uint32
-	shimFormatCtxChapter     func(ctx uintptr, index int32) uintptr
-	shimFormatCtxNbPrograms  func(ctx uintptr) uint32
-	shimFormatCtxProgram     func(ctx uintptr, index int32) uintptr
+	shimFormatCtxDuration   func(ctx uintptr) int64
+	shimFormatCtxBitRate    func(ctx uintptr) int64
+	shimFormatCtxNbChapters func(ctx uintptr) uint32
+	shimFormatCtxChapter    func(ctx uintptr, index int32) uintptr
+	shimFormatCtxNbPrograms func(ctx uintptr) uint32
+	shimFormatCtxProgram    func(ctx uintptr, index int32) uintptr
 
 	shimChapterID       func(ch uintptr) int64
 	shimChapterTimeBase func(ch uintptr, outNum, outDen *int32)
@@ -143,6 +145,18 @@ func Load() error {
 		loadErr = err
 		searchErr = err.Error()
 		return nil
+	}
+	// A shim is only safe with the FFmpeg release it was linked against:
+	// another release's shim drags its own libraries in beside the loaded
+	// ones. FFmpeg is loaded first so the release is known.
+	if bindings.Load() == nil {
+		if set, ok := bindings.LoadedVersionSet(); ok {
+			if match, why := shimMatchesRelease(path, set); !match {
+				loadErr = fmt.Errorf("%w: %s", ErrShimNotFound, why)
+				searchErr = loadErr.Error()
+				return nil
+			}
+		}
 	}
 
 	lib, err := purego.Dlopen(path, purego.RTLD_NOW|purego.RTLD_GLOBAL)

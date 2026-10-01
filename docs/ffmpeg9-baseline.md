@@ -30,3 +30,41 @@ unversioned `libavutil.so` (9.0) is loaded beside whatever else matches, the
 mix the loader must never produce.
 
 Next: load one release's libraries, newest first (Task 2), then re-run.
+
+## Result after the fixes (2026-09-30)
+
+`CGO_ENABLED=0 go test ./... -count=1` on FFmpeg 9.0.1 (this host): **238
+passed, 0 skipped, 0 failed**. The same suite against BtbN's FFmpeg 9.0.2
+shared build, with the shim built from its headers (`ffmpeg9.yml`'s job,
+run locally): all packages ok.
+
+What it took:
+
+1. **Load one release, newest first** (`internal/bindings/versions.go`).
+   The loader knew FFmpeg 4-7 only and fell back to unversioned names; it
+   now loads every library of one release (avutil, avcodec, avformat, and
+   avfilter, swscale, swresample, avdevice when asked) or none, and
+   `FFGO_FFMPEG_MAJOR` pins a release.
+2. **Struct offsets from the shim** (`internal/layout`, `ffshim_offsetof`).
+   On FFmpeg 9, 35 of the 111 offsets the Go code reads differ from the
+   headers, among them `AVCodecContext.hw_frames_ctx` (Go 840, headers
+   552) and most of `AVFormatContext`. The shim's values are used when it
+   was built against the loaded release; `Init` refuses a release newer
+   than 7 without one.
+3. **`AVFrame.key_frame` is gone in FFmpeg 9.** Every frame read as a
+   keyframe; `GetFrameKeyFrame` now reads `AV_FRAME_FLAG_KEY` from
+   `AVFrame.flags` there. `AVCodec.name` was read at offset 8
+   (`long_name`) on every release.
+4. **Pixel formats by name.** `p010le`, `yuv420p10le` and `cuda` move
+   between majors (161/64/119 in 4.4, 158/62/117 in 9.0) and are looked up
+   with `av_get_pix_fmt`. `RGB48BE/LE` were wrong on every release;
+   `RGBA64BE/LE` move and are deprecated in favour of the lookup.
+5. **A shim is only used with its own release.** A shim links the FFmpeg
+   libraries it was built against; `internal/shim` refuses one whose
+   `DT_NEEDED` sonames name another release (upstream's prebuilt links
+   FFmpeg 6's, this fork's 9's).
+
+FFmpeg 4.x does not load in upstream ffgo either: `avutil` binds the
+channel-layout API that FFmpeg added in 5.1. The fork leaves 4.x as
+upstream has it. CI: `ci.yml` (Ubuntu's FFmpeg, upstream's job) and
+`ffmpeg9.yml` (FFmpeg 9.0 shared).
