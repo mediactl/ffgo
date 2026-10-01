@@ -4,6 +4,7 @@ package ffgo
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"unsafe"
@@ -103,6 +104,11 @@ type EncoderConfig struct {
 type VideoEncoderConfig struct {
 	// Codec specifies the video codec (default: CodecIDH264).
 	Codec CodecID
+
+	// EncoderName selects the encoder by name ("libx265", "hevc_nvenc",
+	// "hevc_qsv", "hevc_vaapi") instead of Codec's default encoder. An
+	// encoder this FFmpeg build does not have is ErrEncoderNotFound.
+	EncoderName string
 
 	// Width is the video width in pixels.
 	Width int
@@ -258,6 +264,10 @@ type EncoderOptions struct {
 	// If empty, TwoPassTranscode will create a temporary file.
 	PassOutput string
 }
+
+// ErrEncoderNotFound is returned when VideoEncoderConfig.EncoderName names an
+// encoder this FFmpeg build does not have.
+var ErrEncoderNotFound = errors.New("ffgo: encoder not found")
 
 // NewEncoder creates a new video encoder.
 func NewEncoder(path string, cfg EncoderConfig) (*Encoder, error) {
@@ -479,8 +489,17 @@ func NewEncoderWithOptions(path string, opts *EncoderOptions) (*Encoder, error) 
 		return nil, err
 	}
 
-	// Find encoder
-	codec := avcodec.FindEncoder(codecID)
+	// Find encoder: by name when one is given, else the codec's default.
+	var codec avcodec.Codec
+	if video.EncoderName != "" {
+		codec = avcodec.FindEncoderByName(video.EncoderName)
+		if codec == nil {
+			e.cleanup()
+			return nil, fmt.Errorf("%w: %s", ErrEncoderNotFound, video.EncoderName)
+		}
+	} else {
+		codec = avcodec.FindEncoder(codecID)
+	}
 	if codec == nil {
 		e.cleanup()
 		return nil, errors.New("ffgo: encoder not found")
