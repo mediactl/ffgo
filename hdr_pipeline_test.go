@@ -62,8 +62,11 @@ func hdr10Transcode(t *testing.T, src string, r hdrRun) string {
 	// open creates the encoder and the output stream from the first frame,
 	// which carries the HDR10 side data when the container does not.
 	open := func(first Frame) {
-		md, okMD := StreamSideData(vs.CodecParameters(), PacketSideMasteringDisplay())
-		cll, okCLL := StreamSideData(vs.CodecParameters(), PacketSideContentLightLevel())
+		md, okMD, errMD := StreamSideData(vs.CodecParameters(), PacketSideMasteringDisplay())
+		cll, okCLL, errCLL := StreamSideData(vs.CodecParameters(), PacketSideContentLightLevel())
+		if err := errors.Join(errMD, errCLL); err != nil && !errors.Is(err, ErrNotSupported) {
+			t.Fatal(err)
+		}
 		if !okMD {
 			md, okMD = first.SideData(FrameSideMasteringDisplay())
 		}

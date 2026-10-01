@@ -326,6 +326,10 @@ func (f Frame) PTS() int64 { return avutil.GetFramePTS(f.ptr) }
 // SetPTS sets the frame's presentation timestamp.
 func (f Frame) SetPTS(pts int64) { avutil.SetFramePTS(f.ptr, pts) }
 
+// ChannelLayout is an audio frame's channel layout name ("5.1(side)"), or
+// "" without the shim.
+func (f Frame) ChannelLayout() string { return shim.FrameChLayoutDescribe(f.ptr) }
+
 // NumSamples is an audio frame's sample count per channel.
 func (f Frame) NumSamples() int { return int(avutil.GetFrameNbSamples(f.ptr)) }
 
@@ -442,6 +446,9 @@ type StreamInfo struct {
 	Title         string      // the "title" tag
 	ChannelLayout string      // audio: FFmpeg's layout name, e.g. "5.1(side)"
 	Metadata      Metadata    // every stream tag
+	// Codec is the codec's FFmpeg name ("hevc", "dts", "av1"), the same
+	// on every release; CodecName is the decoder's ("libdav1d", "dca").
+	Codec string
 
 	// codecPar stores the codec parameters for stream copy operations.
 	codecPar avcodec.Parameters

@@ -210,6 +210,8 @@ int ffshim_audio_fifo_read_frame(void *fifo, void *frame, int nb_samples);
 int ffshim_codec_id(void *codec);
 int ffshim_hwframes_new(void *device_ref, int format, int sw_format, int width, int height, int pool, void **out);
 int ffshim_filter_set_hw_device(void *filter_ctx, void *device_ref);
+void ffshim_frame_set_pict_type_none(void *frame);
+int ffshim_frame_nb_channels(void *frame);
 
 #ifdef __cplusplus
 }

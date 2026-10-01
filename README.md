@@ -29,17 +29,21 @@ needs. Each change is offered upstream.
   `HWDecoder` drains its last frames at end of file.
 - **Codec IDs resolved by name**: `AVCodecID` values move too (HEVC is 173
   through FFmpeg 7 and 172 in 9), so `FindEncoder`, `FindDecoder` and
-  `SetCodecParCodecID` resolve ffgo's constants in the loaded release
-  (`avcodec.Resolve`, `avcodec.CodecIDByName`). Compare codec names, not
-  IDs, across releases.
+  `SetCodecParCodecID` take ffgo's constants and resolve them in the loaded
+  release (`avcodec.Resolve`, `avcodec.CodecIDByName`); `FindDecoder` takes
+  a stream's own ID unresolved. Across releases compare `StreamInfo.Codec`
+  (the codec's name, `"hevc"`, `"dts"`), not IDs and not `CodecName` (the
+  decoder's, `"libdav1d"`, `"dca"`).
 - **A decoder per stream** (`Decoder.Streams`, `Decoder.NewStreamDecoder`):
   one demuxer feeds every stream's decoder, each on its own goroutine
   (`Packet.Clone`); GPU frames stay on the device. `Streams` reports each
   stream's language, title, disposition and channel layout name.
 - **Packet-level encoders**: `VideoStreamEncoder` keeps each frame's PTS,
-  never drops a frame on `EAGAIN`, rejects codec options the encoder does
-  not have, and takes HDR side data; `AudioEncoder` (AAC) takes frames of
-  any size through an audio FIFO.
+  never drops a frame on `EAGAIN`, lets the encoder choose frame types,
+  rejects codec options the encoder does not have, and takes HDR side data;
+  `AudioEncoder` (AAC) takes frames of any size through an audio FIFO,
+  refuses a frame that does not match it, and fills input gaps with
+  silence. `StreamDecoder.Send` returns `ErrAgain` when the decoder is full.
 - **Channel layouts by name** (`AudioFormat.Layout`): `5.1(side)` and
   `7.1` are mixed by position, so 7.1 folds into 5.1 correctly.
 - **Side data**: mastering display and light level read from frames and

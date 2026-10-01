@@ -8,12 +8,31 @@ var (
 	shimCodecID           func(codec uintptr) int32
 	shimHWFramesNew       func(device uintptr, format, swFormat, width, height, pool int32, out *uintptr) int32
 	shimFilterSetHWDevice func(filter, device uintptr) int32
+	shimFrameSetPictNone  func(frame uintptr)
+	shimFrameNbChannels   func(frame uintptr) int32
 )
 
 func registerHWFramesBindings() {
 	registerOptionalLibFunc(&shimCodecID, libShim, "ffshim_codec_id")
 	registerOptionalLibFunc(&shimHWFramesNew, libShim, "ffshim_hwframes_new")
 	registerOptionalLibFunc(&shimFilterSetHWDevice, libShim, "ffshim_filter_set_hw_device")
+	registerOptionalLibFunc(&shimFrameSetPictNone, libShim, "ffshim_frame_set_pict_type_none")
+	registerOptionalLibFunc(&shimFrameNbChannels, libShim, "ffshim_frame_nb_channels")
+}
+
+// FrameSetPictTypeNone clears a frame's pict_type; a no-op without the shim.
+func FrameSetPictTypeNone(frame unsafe.Pointer) {
+	if loaded && shimFrameSetPictNone != nil && frame != nil {
+		shimFrameSetPictNone(uintptr(frame))
+	}
+}
+
+// FrameNbChannels is an audio frame's channel count, or -1 without the shim.
+func FrameNbChannels(frame unsafe.Pointer) int {
+	if !loaded || shimFrameNbChannels == nil || frame == nil {
+		return -1
+	}
+	return int(shimFrameNbChannels(uintptr(frame)))
 }
 
 // CodecID is an AVCodec's codec id, or -1 without the shim.

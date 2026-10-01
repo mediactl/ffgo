@@ -316,6 +316,7 @@ func (d *Decoder) getStreamInfo(streamIdx int) *StreamInfo {
 		Type:      codecType,
 		CodecID:   codecID,
 		CodecName: codecName,
+		Codec:     avcodec.CodecIDName(codecID),
 		TimeBase:  avutil.NewRational(tbNum, tbDen),
 		codecPar:  codecPar,
 	}

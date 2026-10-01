@@ -45,6 +45,7 @@ type AudioEncoder struct {
 	frameSize  int
 	sampleRate int
 	sampleFmt  SampleFormat
+	channels   int
 	layout     string
 	inTB       Rational
 	nextPTS    int64
@@ -118,7 +119,7 @@ func NewAudioEncoder(cfg AudioEncoderConfig2) (*AudioEncoder, error) {
 	}
 	return &AudioEncoder{
 		ctx: ctx, pkt: pkt, fifo: fifo, frameSize: frameSize, sampleRate: cfg.SampleRate,
-		sampleFmt: sampleFmt, layout: cfg.Layout, inTB: inTB,
+		sampleFmt: sampleFmt, channels: channels, layout: cfg.Layout, inTB: inTB,
 	}, nil
 }
 
@@ -134,12 +135,35 @@ func (e *AudioEncoder) Encode(f Frame, emit func(*Packet) error) error {
 	if f.IsNil() {
 		return nil
 	}
-	if !e.havePTS {
-		if pts := f.PTS(); pts != avutil.AV_NOPTS_VALUE {
-			e.nextPTS = rescaleQ(pts, e.inTB, NewRational(1, int32(e.sampleRate)))
-		}
-		e.havePTS = true
+	// The FIFO reads as many planes as the encoder has channels: a frame of
+	// another format, layout or rate would be read out of bounds or played
+	// at the wrong speed, so it is refused.
+	if got := SampleFormat(f.Format()); got != e.sampleFmt {
+		return fmt.Errorf("ffgo: audio encoder takes sample format %d, the frame is %d", e.sampleFmt, got)
 	}
+	if got := shim.FrameNbChannels(unsafe.Pointer(f.ptr)); got != e.channels {
+		return fmt.Errorf("ffgo: audio encoder takes %d channels (%s), the frame has %d", e.channels, e.layout, got)
+	}
+	if got := int(avutil.GetFrameSampleRate(f.ptr)); got != e.sampleRate {
+		return fmt.Errorf("ffgo: audio encoder takes %d Hz, the frame is %d Hz", e.sampleRate, got)
+	}
+	toSamples := NewRational(1, int32(e.sampleRate))
+	if pts := f.PTS(); pts != avutil.AV_NOPTS_VALUE {
+		at := rescaleQ(pts, e.inTB, toSamples)
+		if !e.havePTS {
+			e.nextPTS = at
+		} else if gap := at - (e.nextPTS + int64(shim.AudioFifoSize(e.fifo))); gap > int64(e.frameSize) {
+			// Samples missing from the input (dropped packets): fill them
+			// with silence so later audio keeps its timestamps. A gap of
+			// more than a minute is a broken timestamp, not a gap.
+			if gap <= int64(60*e.sampleRate) {
+				if err := e.writeSilence(int(gap)); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	e.havePTS = true
 	if ret := shim.AudioFifoWriteFrame(e.fifo, unsafe.Pointer(f.ptr)); ret < 0 {
 		return avutil.NewError(ret, "av_audio_fifo_write")
 	}
@@ -147,6 +171,24 @@ func (e *AudioEncoder) Encode(f Frame, emit func(*Packet) error) error {
 		if err := e.sendFromFifo(e.frameSize, emit); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// writeSilence appends n silent samples to the FIFO.
+func (e *AudioEncoder) writeSilence(n int) error {
+	for n > 0 {
+		chunk := min(n, 48000)
+		s, err := NewAudioFrame(e.sampleFmt, e.sampleRate, e.layout, chunk)
+		if err != nil {
+			return err
+		}
+		ret := shim.AudioFifoWriteFrame(e.fifo, unsafe.Pointer(s.ptr))
+		_ = s.Free()
+		if ret < 0 {
+			return avutil.NewError(ret, "av_audio_fifo_write")
+		}
+		n -= chunk
 	}
 	return nil
 }
@@ -164,10 +206,11 @@ func (e *AudioEncoder) Flush(emit func(*Packet) error) error {
 			return err
 		}
 	}
-	if err := avcodec.SendFrame(e.ctx, nil); err != nil && !errors.Is(err, ErrAgain) {
+	if err := avcodec.SendFrameErr(e.ctx, nil); err != nil && !avutil.IsEOF(err) {
 		return err
 	}
-	return e.drain(emit)
+	_, err := drainPackets(e.ctx, e.pkt, emit)
+	return err
 }
 
 // sendFromFifo sends n samples from the FIFO as one frame. A fresh frame
@@ -183,37 +226,9 @@ func (e *AudioEncoder) sendFromFifo(n int, emit func(*Packet) error) error {
 	}
 	f.SetPTS(e.nextPTS)
 	e.nextPTS += int64(n)
-	for {
-		err := avcodec.SendFrame(e.ctx, f.ptr)
-		if errors.Is(err, ErrAgain) { // its output must be read first: never drop the frame
-			if err := e.drain(emit); err != nil {
-				return err
-			}
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		break
-	}
-	return e.drain(emit)
-}
-
-// drain hands every packet the encoder has ready to emit.
-func (e *AudioEncoder) drain(emit func(*Packet) error) error {
-	for {
-		avcodec.PacketUnref(e.pkt)
-		err := avcodec.ReceivePacket(e.ctx, e.pkt)
-		if errors.Is(err, ErrAgain) || avutil.IsEOF(err) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		if err := emit(&Packet{ptr: e.pkt, owned: false}); err != nil {
-			return err
-		}
-	}
+	return sendDraining(func() error { return avcodec.SendFrameErr(e.ctx, f.ptr) }, func() (int, error) {
+		return drainPackets(e.ctx, e.pkt, emit)
+	})
 }
 
 // Parameters are the encoder's codec parameters, for a muxer stream; the

@@ -108,7 +108,10 @@ func TestStreamSideDataRoundTrip(t *testing.T) {
 	if err := SetStreamSideData(par, PacketSideContentLightLevel(), want); err != nil {
 		t.Fatal(err)
 	}
-	got, ok := StreamSideData(par, PacketSideContentLightLevel())
+	got, ok, err := StreamSideData(par, PacketSideContentLightLevel())
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !ok || !bytes.Equal(got, want) {
 		t.Errorf("got %v, %v; want %v", got, ok, want)
 	}

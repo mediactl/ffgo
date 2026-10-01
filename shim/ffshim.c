@@ -1014,3 +1014,12 @@ int ffshim_filter_set_hw_device(void *filter_ctx, void *device_ref) {
     return f->hw_device_ctx ? 0 : AVERROR(ENOMEM);
 }
 #endif
+
+/* Clears a frame's picture type so an encoder chooses its own (fftools
+   does the same before encoding a decoded frame). */
+void ffshim_frame_set_pict_type_none(void *frame) {
+    ((AVFrame *)frame)->pict_type = AV_PICTURE_TYPE_NONE;
+}
+
+/* A frame's channel count, from its AVChannelLayout. */
+int ffshim_frame_nb_channels(void *frame) { return ((AVFrame *)frame)->ch_layout.nb_channels; }

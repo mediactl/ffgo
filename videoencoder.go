@@ -29,6 +29,9 @@ type VideoStreamEncoderConfig struct {
 	SideData map[FrameSideDataType][]byte
 	// GlobalHeader sets AV_CODEC_FLAG_GLOBAL_HEADER (Muxer.NeedsGlobalHeader).
 	GlobalHeader bool
+	// KeepFrameTypes sends frames with their pict_type (a caller forcing
+	// keyframes); by default it is cleared so the encoder decides.
+	KeepFrameTypes bool
 }
 
 // VideoStreamEncoder encodes video frames into packets for a Muxer stream.
@@ -39,8 +42,9 @@ type VideoStreamEncoder struct {
 	mu       sync.Mutex
 	ctx      avcodec.Context
 	pkt      avcodec.Packet
-	timeBase Rational
-	closed   bool
+	timeBase  Rational
+	keepTypes bool
+	closed    bool
 }
 
 // NewVideoStreamEncoder opens a video encoder.
@@ -143,7 +147,7 @@ func NewVideoStreamEncoder(cfg VideoStreamEncoderConfig) (*VideoStreamEncoder, e
 	if pkt == nil {
 		return fail(ErrOutOfMemory)
 	}
-	return &VideoStreamEncoder{ctx: ctx, pkt: pkt, timeBase: cfg.TimeBase}, nil
+	return &VideoStreamEncoder{ctx: ctx, pkt: pkt, timeBase: cfg.TimeBase, keepTypes: cfg.KeepFrameTypes}, nil
 }
 
 // Encode sends f, keeping its PTS, and hands every packet the encoder has
@@ -154,18 +158,40 @@ func (e *VideoStreamEncoder) Encode(f Frame, emit func(*Packet) error) error {
 	if e.closed {
 		return ErrClosed
 	}
-	for {
-		err := avcodec.SendFrame(e.ctx, f.ptr)
+	if !e.keepTypes {
+		// The encoder picks its own frame types; a decoded frame's I/P/B
+		// would otherwise force the source's GOP onto the output.
+		shim.FrameSetPictTypeNone(unsafe.Pointer(f.ptr))
+	}
+	return sendDraining(func() error { return avcodec.SendFrameErr(e.ctx, f.ptr) }, func() (int, error) {
+		return e.drainCount(emit)
+	})
+}
+
+// sendDraining sends with send; on EAGAIN it reads the codec's output with
+// drain and sends again, so nothing is dropped. A codec that refuses input
+// twice while giving no output has broken the send/receive contract and
+// is an error rather than a spin.
+func sendDraining(send func() error, drain func() (int, error)) error {
+	for stalls := 0; ; {
+		err := send()
 		if errors.Is(err, ErrAgain) {
-			if err := e.drain(emit); err != nil {
+			n, err := drain()
+			if err != nil {
 				return err
+			}
+			if n == 0 {
+				if stalls++; stalls == 2 {
+					return errors.New("ffgo: the codec neither takes input nor gives output (EAGAIN both ways)")
+				}
 			}
 			continue
 		}
 		if err != nil {
 			return err
 		}
-		return e.drain(emit)
+		_, err = drain()
+		return err
 	}
 }
 
@@ -176,24 +202,31 @@ func (e *VideoStreamEncoder) Flush(emit func(*Packet) error) error {
 	if e.closed {
 		return ErrClosed
 	}
-	if err := avcodec.SendFrame(e.ctx, nil); err != nil && !avutil.IsEOF(err) {
+	if err := avcodec.SendFrameErr(e.ctx, nil); err != nil && !avutil.IsEOF(err) {
 		return err
 	}
-	return e.drain(emit)
+	_, err := e.drainCount(emit)
+	return err
 }
 
-func (e *VideoStreamEncoder) drain(emit func(*Packet) error) error {
-	for {
-		avcodec.PacketUnref(e.pkt)
-		err := avcodec.ReceivePacket(e.ctx, e.pkt)
+func (e *VideoStreamEncoder) drainCount(emit func(*Packet) error) (int, error) {
+	return drainPackets(e.ctx, e.pkt, emit)
+}
+
+// drainPackets hands every packet an encoder has ready to emit and says
+// how many there were.
+func drainPackets(ctx avcodec.Context, pkt avcodec.Packet, emit func(*Packet) error) (int, error) {
+	for n := 0; ; n++ {
+		avcodec.PacketUnref(pkt)
+		err := avcodec.ReceivePacket(ctx, pkt)
 		if errors.Is(err, ErrAgain) || avutil.IsEOF(err) {
-			return nil
+			return n, nil
 		}
 		if err != nil {
-			return err
+			return n, err
 		}
-		if err := emit(&Packet{ptr: e.pkt, owned: false}); err != nil {
-			return err
+		if err := emit(&Packet{ptr: pkt, owned: false}); err != nil {
+			return n, err
 		}
 	}
 }

@@ -94,7 +94,9 @@ func (d *Decoder) NewStreamDecoder(streamIndex int, cfg *StreamDecoderConfig) (*
 }
 
 // Send gives the decoder a packet of its stream; nil signals end of
-// stream, after which Receive drains the decoder until io.EOF.
+// stream, after which Receive drains the decoder until io.EOF. ErrAgain
+// means the decoder took nothing: Receive its frames, then send the same
+// packet again.
 func (s *StreamDecoder) Send(p *Packet) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -105,7 +107,7 @@ func (s *StreamDecoder) Send(p *Packet) error {
 	if p != nil {
 		pkt = p.ptr
 	}
-	return avcodec.SendPacket(s.ctx, pkt)
+	return avcodec.SendPacketErr(s.ctx, pkt)
 }
 
 // Receive returns the next decoded frame: ErrAgain when the decoder needs

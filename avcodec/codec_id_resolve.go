@@ -37,7 +37,18 @@ var codecNames = map[CodecID]string{
 // is not, so the value keeps meaning PNG when resolved.
 func init() { delete(codecNames, CodecIDVP6) }
 
+// CodecIDName is FFmpeg's name for a codec ID of the loaded release
+// ("hevc", "dts"), whatever decoder or encoder implements it.
+func CodecIDName(id CodecID) string {
+	loadDescriptorByName()
+	if avcodecGetName == nil {
+		return ""
+	}
+	return avcodecGetName(int32(id))
+}
+
 var (
+	avcodecGetName             func(id int32) string
 	descriptorByNameOnce       sync.Once
 	avcodecDescriptorGetByName func(name string) uintptr
 )
@@ -50,6 +61,7 @@ func loadDescriptorByName() {
 		}
 		defer func() { _ = recover() }()
 		purego.RegisterLibFunc(&avcodecDescriptorGetByName, lib, "avcodec_descriptor_get_by_name")
+		purego.RegisterLibFunc(&avcodecGetName, lib, "avcodec_get_name")
 	})
 }
 

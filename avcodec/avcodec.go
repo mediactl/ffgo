@@ -116,13 +116,18 @@ func registerOptionalLibFunc(fptr any, handle uintptr, name string) {
 
 // FindDecoder finds a decoder by codec ID.
 func FindDecoder(id CodecID) Codec {
+	// The id comes from a stream's codec parameters: the loaded release's
+	// own numbering, which ffgo's constants may collide with (PAM is 66 in
+	// FFmpeg 9, ffgo's CodecIDBMP), so it is not resolved.
 	if avcodecFindDecoder == nil {
 		return nil
 	}
-	return unsafe.Pointer(avcodecFindDecoder(int32(Resolve(id))))
+	return unsafe.Pointer(avcodecFindDecoder(int32(id)))
 }
 
-// FindEncoder finds an encoder by codec ID.
+// FindEncoder finds an encoder by codec ID. id is an ffgo constant
+// (CodecIDHEVC), resolved by name in the loaded release; FindDecoder takes
+// the release's own ID as read from a stream, unresolved.
 func FindEncoder(id CodecID) Codec {
 	if avcodecFindEncoder == nil {
 		return nil
@@ -241,6 +246,18 @@ func SendPacket(ctx Context, pkt Packet) error {
 	return nil
 }
 
+// SendPacketErr is SendPacket that reports AVERROR(EAGAIN) (the decoder
+// wants its output read first; errors.Is(err, avutil.ErrAgain)) and
+// AVERROR_EOF as errors instead of dropping the packet behind a nil.
+func SendPacketErr(ctx Context, pkt Packet) error {
+	if avcodecSendPacket == nil {
+		return bindings.ErrNotLoaded
+	}
+	ret := avcodecSendPacket(uintptr(ctx), uintptr(pkt))
+	runtime.KeepAlive(pkt)
+	return avutil.NewError(ret, "avcodec_send_packet")
+}
+
 // ReceiveFrame receives a decoded frame from the decoder.
 // Returns nil frame and nil error if more data is needed (EAGAIN) or EOF.
 func ReceiveFrame(ctx Context, frame avutil.Frame) error {
@@ -269,6 +286,17 @@ func SendFrame(ctx Context, frame avutil.Frame) error {
 		return avutil.NewError(ret, "avcodec_send_frame")
 	}
 	return nil
+}
+
+// SendFrameErr is SendFrame that reports AVERROR(EAGAIN) and AVERROR_EOF
+// as errors instead of dropping the frame behind a nil.
+func SendFrameErr(ctx Context, frame avutil.Frame) error {
+	if avcodecSendFrame == nil {
+		return bindings.ErrNotLoaded
+	}
+	ret := avcodecSendFrame(uintptr(ctx), uintptr(frame))
+	runtime.KeepAlive(frame)
+	return avutil.NewError(ret, "avcodec_send_frame")
 }
 
 // ReceivePacket receives an encoded packet from the encoder.

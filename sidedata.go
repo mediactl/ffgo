@@ -105,16 +105,21 @@ func (f Frame) AddSideData(t FrameSideDataType, data []byte) error {
 }
 
 // StreamSideData is a copy of a stream's coded side data of type t (its
-// codec parameters' coded_side_data); false before FFmpeg 6.1.
-func StreamSideData(par avcodec.Parameters, t PacketSideDataType) ([]byte, bool) {
+// codec parameters' coded_side_data). ok is false when the stream has
+// none; the error is ErrNotSupported before FFmpeg 6.1 and ErrShimRequired
+// without the shim, so "absent" is never a guess.
+func StreamSideData(par avcodec.Parameters, t PacketSideDataType) ([]byte, bool, error) {
+	if !shim.SideDataAvailable() {
+		return nil, false, ErrShimRequired
+	}
 	if t < 0 {
-		return nil, false
+		return nil, false, fmt.Errorf("%w: stream side data type", ErrNotSupported)
 	}
 	b, ok, err := shim.CodecParSideData(unsafe.Pointer(par), int32(t))
 	if err != nil {
-		return nil, false
+		return nil, false, ErrNotSupported
 	}
-	return b, ok
+	return b, ok, nil
 }
 
 // SetStreamSideData sets a stream's coded side data of type t to a copy of
