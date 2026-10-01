@@ -206,6 +206,11 @@ int ffshim_audio_fifo_size(void *fifo);
 int ffshim_audio_fifo_write_frame(void *fifo, void *frame);
 int ffshim_audio_fifo_read_frame(void *fifo, void *frame, int nb_samples);
 
+/* Encoders, GPU frame pools, devices on filter graphs. */
+int ffshim_codec_id(void *codec);
+int ffshim_hwframes_new(void *device_ref, int format, int sw_format, int width, int height, int pool, void **out);
+int ffshim_filter_set_hw_device(void *filter_ctx, void *device_ref);
+
 #ifdef __cplusplus
 }
 #endif

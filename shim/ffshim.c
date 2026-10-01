@@ -976,3 +976,41 @@ int ffshim_audio_fifo_read_frame(void *fifo, void *frame, int nb_samples) {
     AVFrame *f = frame;
     return av_audio_fifo_read((AVAudioFifo *)fifo, (void **)f->extended_data, nb_samples);
 }
+
+/* ============================================================================
+ * ENCODERS, GPU FRAME POOLS, DEVICES ON FILTER GRAPHS
+ * ============================================================================ */
+
+int ffshim_codec_id(void *codec) { return codec ? (int)((const AVCodec *)codec)->id : -1; }
+
+/* A GPU frame pool on device: format (AV_PIX_FMT_CUDA, _VAAPI, _QSV) holding
+   sw_format surfaces of width x height, pool surfaces preallocated. */
+int ffshim_hwframes_new(void *device_ref, int format, int sw_format, int width, int height, int pool,
+                        void **out) {
+    AVBufferRef *ref = av_hwframe_ctx_alloc((AVBufferRef *)device_ref);
+    if (!ref) return AVERROR(ENOMEM);
+    AVHWFramesContext *fc = (AVHWFramesContext *)ref->data;
+    fc->format = (enum AVPixelFormat)format;
+    fc->sw_format = (enum AVPixelFormat)sw_format;
+    fc->width = width;
+    fc->height = height;
+    fc->initial_pool_size = pool;
+    int ret = av_hwframe_ctx_init(ref);
+    if (ret < 0) {
+        av_buffer_unref(&ref);
+        return ret;
+    }
+    *out = ref;
+    return 0;
+}
+
+#ifdef FFSHIM_HAVE_AVFILTER
+/* Gives a filter a hardware device (hwupload, vpp_qsv and scale_vaapi read
+   it when the graph is configured). */
+int ffshim_filter_set_hw_device(void *filter_ctx, void *device_ref) {
+    AVFilterContext *f = filter_ctx;
+    av_buffer_unref(&f->hw_device_ctx);
+    f->hw_device_ctx = av_buffer_ref((AVBufferRef *)device_ref);
+    return f->hw_device_ctx ? 0 : AVERROR(ENOMEM);
+}
+#endif

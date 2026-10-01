@@ -853,7 +853,7 @@ func SetCodecParCodecID(par avcodec.Parameters, codecID avcodec.CodecID) {
 	if par == nil {
 		return
 	}
-	*(*int32)(unsafe.Pointer(uintptr(par) + offsetCodecParCodecID)) = int32(codecID)
+	*(*int32)(unsafe.Pointer(uintptr(par) + offsetCodecParCodecID)) = int32(avcodec.Resolve(codecID))
 }
 
 // SetCodecParExtradata sets the extradata in codec parameters.

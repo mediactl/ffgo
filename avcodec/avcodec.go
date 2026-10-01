@@ -119,7 +119,7 @@ func FindDecoder(id CodecID) Codec {
 	if avcodecFindDecoder == nil {
 		return nil
 	}
-	return unsafe.Pointer(avcodecFindDecoder(int32(id)))
+	return unsafe.Pointer(avcodecFindDecoder(int32(Resolve(id))))
 }
 
 // FindEncoder finds an encoder by codec ID.
@@ -127,7 +127,7 @@ func FindEncoder(id CodecID) Codec {
 	if avcodecFindEncoder == nil {
 		return nil
 	}
-	return unsafe.Pointer(avcodecFindEncoder(int32(id)))
+	return unsafe.Pointer(avcodecFindEncoder(int32(Resolve(id))))
 }
 
 // FindDecoderByName finds a decoder by name.

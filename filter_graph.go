@@ -54,6 +54,11 @@ type FilterGraphConfig struct {
 	// format (PixelFormatCUDA). GPU filters such as scale_cuda then run on
 	// the frames in place; nil means software frames.
 	HWFramesCtx avutil.HWFramesContext
+
+	// HWDevice is given to every filter of the chain before the graph is
+	// configured, so hwupload can upload software frames to it and
+	// vpp_qsv or scale_vaapi can make their own pools on it.
+	HWDevice *HWDevice
 }
 
 // ErrFilterGraphClosed is returned when operating on a closed filter graph.
@@ -198,7 +203,7 @@ func (g *FilterGraph) setupVideoFilters(cfg FilterGraphConfig) error {
 	} else {
 		// For filter chains, we create intermediate filters manually
 		// This is more reliable than using GraphParse2 which has linking issues
-		if err := g.linkFilterChain(cfg.Filters); err != nil {
+		if err := g.linkFilterChain(cfg.Filters, cfg.HWDevice); err != nil {
 			return err
 		}
 	}
@@ -213,7 +218,7 @@ func (g *FilterGraph) setupVideoFilters(cfg FilterGraphConfig) error {
 
 // linkFilterChain parses a filter string and creates/links filters manually.
 // Filter string format: "filter1=args1,filter2=args2,..."
-func (g *FilterGraph) linkFilterChain(filters string) error {
+func (g *FilterGraph) linkFilterChain(filters string, device *HWDevice) error {
 	// Parse filters - split by comma (simple parsing, doesn't handle nested commas)
 	filterList := parseFilterChain(filters)
 
@@ -230,9 +235,9 @@ func (g *FilterGraph) linkFilterChain(filters string) error {
 			return fmt.Errorf("ffgo: filter %q not found", f.name)
 		}
 
-		ctx, err := avfilter.GraphCreateFilter(g.graph, filter, fmt.Sprintf("f%d", i), f.args)
+		ctx, err := g.createFilter(filter, fmt.Sprintf("f%d", i), f.name, f.args, device)
 		if err != nil {
-			return fmt.Errorf("ffgo: failed to create filter %q: %w", f.name, err)
+			return err
 		}
 		filterCtxs = append(filterCtxs, ctx)
 	}
@@ -252,6 +257,34 @@ func (g *FilterGraph) linkFilterChain(filters string) error {
 	}
 
 	return nil
+}
+
+// createFilter creates and initialises one filter. With a device the
+// filter is allocated, given the device, then initialised: hwupload and
+// the VAAPI/QSV filters read hw_device_ctx when they initialise, which
+// avfilter_graph_create_filter (create and init in one) cannot give them.
+func (g *FilterGraph) createFilter(filter avfilter.Filter, instance, name, args string, device *HWDevice) (avfilter.Context, error) {
+	if device == nil {
+		ctx, err := avfilter.GraphCreateFilter(g.graph, filter, instance, args)
+		if err != nil {
+			return nil, fmt.Errorf("ffgo: failed to create filter %q: %w", name, err)
+		}
+		return ctx, nil
+	}
+	ctx, err := avfilter.GraphAllocFilter(g.graph, filter, instance)
+	if err != nil {
+		return nil, fmt.Errorf("ffgo: failed to allocate filter %q: %w", name, err)
+	}
+	if ret := shim.FilterSetHWDevice(unsafe.Pointer(ctx), unsafe.Pointer(device.Context())); ret < 0 {
+		if ret == -38 {
+			return nil, fmt.Errorf("ffgo: a device on filter %q: %w", name, ErrShimRequired)
+		}
+		return nil, fmt.Errorf("ffgo: a device on filter %q: %w", name, avutil.NewError(ret, "hw_device_ctx"))
+	}
+	if err := avfilter.InitStr(ctx, args); err != nil {
+		return nil, fmt.Errorf("ffgo: failed to initialise filter %q: %w", name, err)
+	}
+	return ctx, nil
 }
 
 // filterSpec represents a parsed filter specification
