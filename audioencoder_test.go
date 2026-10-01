@@ -11,8 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/obinnaokechukwu/ffgo/avcodec"
 )
 
 // toneOn makes a 1 s 48 kHz FLAC in layout whose only non-silent channel is ch.
@@ -233,17 +231,10 @@ func TestAACEncoderTakesAnyFrameSize(t *testing.T) {
 	}
 }
 
-// addEncoderStreamForTest adds a muxer stream for enc's packets. Until
-// Muxer.AddEncoderStream exists (Task 6) it is a copy stream of the
-// encoder's parameters, rescaled from the encoder's time base.
+// addEncoderStreamForTest adds a muxer stream for enc's packets.
 func addEncoderStreamForTest(t *testing.T, m *Muxer, enc *AudioEncoder) *MuxerStream {
 	t.Helper()
-	par, err := enc.Parameters()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer avcodec.ParametersFree(&par)
-	ms, err := m.AddCopyStream(&CopyStreamConfig{CodecParameters: par, TimeBase: enc.TimeBase()})
+	ms, err := m.AddEncoderStream(enc, StreamOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

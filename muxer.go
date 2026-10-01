@@ -4,11 +4,15 @@ package ffgo
 
 import (
 	"errors"
+	"fmt"
+	"sort"
 	"sync"
+	"unsafe"
 
 	"github.com/obinnaokechukwu/ffgo/avcodec"
 	"github.com/obinnaokechukwu/ffgo/avformat"
 	"github.com/obinnaokechukwu/ffgo/avutil"
+	"github.com/obinnaokechukwu/ffgo/internal/shim"
 )
 
 // Muxer combines multiple streams into a container.
@@ -34,6 +38,24 @@ type MuxerStream struct {
 	mediaType MediaType
 	encoder   *streamEncoder // nil for copy mode
 	copyMode  bool
+}
+
+// StreamOptions are a stream's tags, disposition and stream-level side
+// data, applied when the stream is added. Metadata is applied first, then
+// Language and Title override its "language" and "title".
+type StreamOptions struct {
+	Language    string
+	Title       string
+	Disposition Disposition
+	Metadata    Metadata
+	SideData    map[PacketSideDataType][]byte
+}
+
+// EncodedStreamSource is an encoder whose packets a Muxer stream carries:
+// VideoStreamEncoder and AudioEncoder.
+type EncodedStreamSource interface {
+	Parameters() (avcodec.Parameters, error)
+	TimeBase() Rational
 }
 
 // streamEncoder handles encoding for a muxer stream.
@@ -286,6 +308,7 @@ func (m *Muxer) AddAudioStream(config *AudioStreamConfig) (*MuxerStream, error) 
 type CopyStreamConfig struct {
 	CodecParameters avcodec.Parameters // Source stream codec parameters
 	TimeBase        Rational           // Source stream time base
+	Options         StreamOptions      // tags, disposition, side data
 }
 
 // AddCopyStream adds a stream in copy mode (no re-encoding).
@@ -319,6 +342,10 @@ func (m *Muxer) AddCopyStream(config *CopyStreamConfig) (*MuxerStream, error) {
 	// Set time base
 	avformat.SetStreamTimeBase(stream, config.TimeBase.Num, config.TimeBase.Den)
 
+	if err := applyStreamOptions(stream, config.Options); err != nil {
+		return nil, err
+	}
+
 	ms := &MuxerStream{
 		muxer:     m,
 		stream:    stream,
@@ -330,6 +357,135 @@ func (m *Muxer) AddCopyStream(config *CopyStreamConfig) (*MuxerStream, error) {
 
 	m.streams = append(m.streams, ms)
 	return ms, nil
+}
+
+// AddEncoderStream adds a stream carrying src's packets (written with
+// WritePacket, their timestamps rescaled from src.TimeBase()).
+func (m *Muxer) AddEncoderStream(src EncodedStreamSource, opts StreamOptions) (*MuxerStream, error) {
+	if src == nil {
+		return nil, errors.New("ffgo: no encoder for the stream")
+	}
+	par, err := src.Parameters()
+	if err != nil {
+		return nil, err
+	}
+	defer avcodec.ParametersFree(&par)
+	tb := src.TimeBase()
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.closed {
+		return nil, errors.New("ffgo: muxer is closed")
+	}
+	if m.headerWritten {
+		return nil, errors.New("ffgo: cannot add streams after header is written")
+	}
+	stream := avformat.NewStream(m.formatCtx, nil)
+	if stream == nil {
+		return nil, errors.New("ffgo: failed to create stream")
+	}
+	codecPar := avformat.GetStreamCodecPar(stream)
+	if err := avcodec.ParametersCopy(codecPar, par); err != nil {
+		return nil, err
+	}
+	avformat.SetStreamTimeBase(stream, tb.Num, tb.Den)
+	if err := applyStreamOptions(stream, opts); err != nil {
+		return nil, err
+	}
+	ms := &MuxerStream{
+		muxer:     m,
+		stream:    stream,
+		index:     len(m.streams),
+		timeBase:  tb,
+		mediaType: avformat.GetCodecParType(codecPar),
+		copyMode:  true, // packets in, rescaled like copied ones
+	}
+	m.streams = append(m.streams, ms)
+	return ms, nil
+}
+
+// applyStreamOptions sets a new stream's tags, disposition and side data.
+func applyStreamOptions(stream avformat.Stream, opts StreamOptions) error {
+	keys := make([]string, 0, len(opts.Metadata))
+	for k := range opts.Metadata {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		if err := avformat.SetStreamMetadata(stream, k, opts.Metadata[k]); err != nil {
+			return err
+		}
+	}
+	for k, v := range map[string]string{"language": opts.Language, "title": opts.Title} {
+		if v != "" {
+			if err := avformat.SetStreamMetadata(stream, k, v); err != nil {
+				return err
+			}
+		}
+	}
+	if opts.Disposition != 0 && !shim.SetStreamDisposition(unsafe.Pointer(stream), int32(opts.Disposition)) {
+		return fmt.Errorf("stream disposition: %w", ErrShimRequired)
+	}
+	par := avformat.GetStreamCodecPar(stream)
+	for t, data := range opts.SideData {
+		if err := SetStreamSideData(par, t, data); err != nil {
+			return fmt.Errorf("stream side data: %w", err)
+		}
+	}
+	return nil
+}
+
+// AddAttachment adds an attachment stream (a font, cover art); call it
+// before WriteHeader.
+func (m *Muxer) AddAttachment(att Attachment) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.closed {
+		return errors.New("ffgo: muxer is closed")
+	}
+	if m.headerWritten {
+		return errors.New("ffgo: AddAttachment must be called before WriteHeader")
+	}
+	return addAttachmentStream(m.formatCtx, att)
+}
+
+// SetChapters adds chapters; call it before WriteHeader.
+func (m *Muxer) SetChapters(chapters []Chapter) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.closed {
+		return errors.New("ffgo: muxer is closed")
+	}
+	if m.headerWritten {
+		return errors.New("ffgo: SetChapters must be called before WriteHeader")
+	}
+	return addChapters(m.formatCtx, chapters)
+}
+
+// SetMetadata sets container tags; call it before WriteHeader.
+func (m *Muxer) SetMetadata(md Metadata) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.closed {
+		return errors.New("ffgo: muxer is closed")
+	}
+	if m.headerWritten {
+		return errors.New("ffgo: SetMetadata must be called before WriteHeader")
+	}
+	for k, v := range md {
+		if err := avformat.SetMetadata(m.formatCtx, k, v); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// NeedsGlobalHeader reports whether the container wants codec headers out
+// of band (Matroska, MP4): encoders for it set their GlobalHeader option.
+func (m *Muxer) NeedsGlobalHeader() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.formatCtx != nil && avformat.NeedsGlobalHeader(m.formatCtx)
 }
 
 // WriteHeader writes the container header.
@@ -457,8 +613,9 @@ func (m *Muxer) WriteFrame(ms *MuxerStream, frame Frame) error {
 	return nil
 }
 
-// WritePacket writes a packet directly to a stream.
-// For copy-mode streams, timestamps should already be in the source time base.
+// WritePacket writes a packet directly to a stream; it is safe to call
+// from several goroutines. For copy-mode and encoder streams, timestamps
+// are in the source's (or encoder's) time base and are rescaled here.
 func (m *Muxer) WritePacket(ms *MuxerStream, packet *Packet) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

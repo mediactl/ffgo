@@ -138,8 +138,17 @@ func (e *Encoder) AddAttachment(att Attachment) error {
 		return errors.New("ffgo: attachment data is empty")
 	}
 
+	return addAttachmentStream(e.formatCtx, att)
+}
+
+// addAttachmentStream adds an attachment stream (a font, cover art) to a
+// muxing context; Encoder and Muxer share it.
+func addAttachmentStream(formatCtx avformat.FormatContext, att Attachment) error {
+	if len(att.Data) == 0 {
+		return errors.New("ffgo: attachment data is empty")
+	}
 	// Create a new stream for the attachment
-	stream := avformat.NewStream(e.formatCtx, nil)
+	stream := avformat.NewStream(formatCtx, nil)
 	if stream == nil {
 		return errors.New("ffgo: failed to create attachment stream")
 	}

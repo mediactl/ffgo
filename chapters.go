@@ -119,6 +119,11 @@ func (e *Encoder) SetChapters(chapters []Chapter) error {
 		return errors.New("ffgo: encoder not initialized")
 	}
 
+	return addChapters(e.formatCtx, chapters)
+}
+
+// addChapters adds chapters to a muxing context; Encoder and Muxer share it.
+func addChapters(formatCtx avformat.FormatContext, chapters []Chapter) error {
 	// Check if shim is loaded (required for chapter writing)
 	if !shim.IsLoaded() {
 		return errors.New("ffgo: shim not loaded, chapter writing not available")
@@ -153,7 +158,7 @@ func (e *Encoder) SetChapters(chapters []Chapter) error {
 
 		// Create chapter using shim
 		_, err := shim.NewChapter(
-			unsafe.Pointer(e.formatCtx),
+			unsafe.Pointer(formatCtx),
 			id,
 			tbNum, tbDen,
 			startPTS, endPTS,
