@@ -6,6 +6,28 @@
 
 Pure Go FFmpeg bindings without CGO. Decode, encode, transcode, and process media files with zero C dependencies at build time.
 
+## The mediactl fork
+
+This is [mediactl/ffgo](https://github.com/mediactl/ffgo), a fork of
+[obinnaokechukwu/ffgo](https://github.com/obinnaokechukwu/ffgo) that keeps
+every upstream feature and adds what squasharr's in-process transcoder
+needs. Each change is offered upstream.
+
+- **FFmpeg 9.0.** One release's libraries are loaded, newest first, never a
+  mix (`FFGO_FFMPEG_MAJOR` pins one). Struct offsets come from the shim
+  built against the loaded release's headers (`internal/layout`), and a
+  shim is only used with the release it was linked against. FFmpeg 9
+  moved most of `AVCodecContext` and `AVFormatContext` and removed
+  `AVFrame.key_frame`; see [docs/ffmpeg9-baseline.md](docs/ffmpeg9-baseline.md).
+- **Pixel formats by name** (`PixelFormatByName`, `PixelFormatCUDA()`):
+  their values move between releases.
+- **Encoder by name** (`VideoEncoderConfig.EncoderName`): `hevc_nvenc`,
+  `hevc_qsv`, `hevc_vaapi`.
+- **GPU frames end to end**: a hardware decoder's frames go through a
+  filter graph (`FilterGraphConfig.HWFramesCtx`, e.g. `scale_cuda`) into
+  an encoder (`VideoEncoderConfig.HWFramesCtx`) without leaving GPU memory;
+  `HWDecoder` drains its last frames at end of file.
+
 ## Features
 
 - **Pure Go builds** - No CGO required (`CGO_ENABLED=0 go build` just works)
