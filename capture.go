@@ -12,7 +12,6 @@ import (
 	"github.com/obinnaokechukwu/ffgo/avdevice"
 	"github.com/obinnaokechukwu/ffgo/avformat"
 	"github.com/obinnaokechukwu/ffgo/avutil"
-	"github.com/obinnaokechukwu/ffgo/internal/bindings"
 	"github.com/obinnaokechukwu/ffgo/internal/shim"
 )
 
@@ -94,7 +93,7 @@ func ListDevices(deviceType DeviceType) ([]DeviceInfo, error) {
 // ListDevicesWithOptions returns available capture devices of the specified type
 // using optional enumeration settings.
 func ListDevicesWithOptions(deviceType DeviceType, opts *DeviceListOptions) ([]DeviceInfo, error) {
-	if err := bindings.Load(); err != nil {
+	if err := Init(); err != nil {
 		return nil, err
 	}
 
@@ -215,7 +214,7 @@ func cStringArrayToGo(arr unsafe.Pointer, count int) []string {
 //	    DeviceType: ffgo.DeviceTypeVideo,
 //	})
 func NewCapture(cfg CaptureConfig) (*Decoder, error) {
-	if err := bindings.Load(); err != nil {
+	if err := Init(); err != nil {
 		return nil, err
 	}
 	if err := avdevice.RegisterAll(); err != nil {
@@ -477,7 +476,7 @@ type ScreenCaptureOptions struct {
 
 // CaptureScreenWithOptions captures the screen with custom options.
 func CaptureScreenWithOptions(opts ScreenCaptureOptions) (*Decoder, error) {
-	if err := bindings.Load(); err != nil {
+	if err := Init(); err != nil {
 		return nil, err
 	}
 	if err := avdevice.RegisterAll(); err != nil {

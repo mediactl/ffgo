@@ -117,6 +117,7 @@ var (
 
 	// Hardware frames.
 	shimFrameHWFramesCtx     func(frame uintptr) uintptr
+	shimHWFramesFormat       func(frames uintptr) int32
 	shimBufferSrcSetHWFrames func(src, frames uintptr) int32
 )
 
@@ -303,6 +304,7 @@ func registerBindings() {
 	registerOptionalLibFunc(&shimOffsetof, libShim, "ffshim_offsetof")
 	registerOptionalLibFunc(&shimBuiltVersions, libShim, "ffshim_built_versions")
 	registerOptionalLibFunc(&shimFrameHWFramesCtx, libShim, "ffshim_frame_hw_frames_ctx")
+	registerOptionalLibFunc(&shimHWFramesFormat, libShim, "ffshim_hwframes_format")
 	registerOptionalLibFunc(&shimBufferSrcSetHWFrames, libShim, "ffshim_buffersrc_set_hw_frames")
 	registerOptionalLibFunc(&shimCodecParWidth, libShim, "ffshim_codecpar_width")
 	registerOptionalLibFunc(&shimCodecParHeight, libShim, "ffshim_codecpar_height")
@@ -1009,4 +1011,13 @@ func BufferSrcSetHWFrames(src, frames unsafe.Pointer) error {
 		return fmt.Errorf("ffgo: av_buffersrc_parameters_set: %d", ret)
 	}
 	return nil
+}
+
+// HWFramesFormat is the hardware pixel format of a GPU frame pool (an
+// AVBufferRef to an AVHWFramesContext); ok is false without the shim.
+func HWFramesFormat(frames unsafe.Pointer) (format int32, ok bool) {
+	if !loaded || shimHWFramesFormat == nil || frames == nil {
+		return 0, false
+	}
+	return shimHWFramesFormat(uintptr(frames)), true
 }

@@ -49,4 +49,22 @@ func TestInitRefusesANewerFFmpegWithoutAMatchingShim(t *testing.T) {
 		t.Fatalf("Init error does not say what is missing: %v", err)
 	}
 	t.Log(err)
+
+	// The constructors are where most callers start (the README never calls
+	// Init); they must refuse the same way, not read and write structs at
+	// FFmpeg 6/7 offsets.
+	for name, open := range map[string]func() error{
+		"NewDecoder":  func() error { _, err := NewDecoder("/nonexistent.mkv"); return err },
+		"ProbeFormat": func() error { _, err := ProbeFormat("/nonexistent.mkv"); return err },
+		"NewEncoderWithOptions": func() error {
+			_, err := NewEncoderWithOptions(filepath.Join(os.TempDir(), "ffgo-noshim.mkv"), &EncoderOptions{
+				Video: &VideoEncoderConfig{Width: 64, Height: 64, FrameRate: NewRational(25, 1)},
+			})
+			return err
+		},
+	} {
+		if err := open(); err == nil || !strings.Contains(err.Error(), "needs the ffshim built against its headers") {
+			t.Errorf("%s on FFmpeg newer than 7 with no shim: got %v, want the shim refusal", name, err)
+		}
+	}
 }

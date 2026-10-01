@@ -652,7 +652,14 @@ static const struct ffshim_field ffshim_fields[] = {
     FFSHIM_FIELD(AVFrame, sample_rate), FFSHIM_FIELD(AVFrame, buf),
     FFSHIM_FIELD(AVFrame, extended_buf), FFSHIM_FIELD(AVFrame, nb_extended_buf),
     FFSHIM_FIELD(AVFrame, flags), FFSHIM_FIELD(AVFrame, ch_layout.nb_channels),
-#if defined(FF_API_FRAME_KEY) && FF_API_FRAME_KEY
+    /* key_frame: deprecated in FFmpeg 6.1 (FF_API_FRAME_KEY), gone in 9.
+       Before 6.1 the macro does not exist and the field does (libavutil
+       below 59); after the removal neither exists. */
+#if defined(FF_API_FRAME_KEY)
+#  if FF_API_FRAME_KEY
+    FFSHIM_FIELD(AVFrame, key_frame),
+#  endif
+#elif LIBAVUTIL_VERSION_MAJOR < 59
     FFSHIM_FIELD(AVFrame, key_frame),
 #endif
     /* AVPacket */
@@ -743,6 +750,17 @@ void ffshim_built_versions(int *avutil, int *avcodec, int *avformat) {
 /* The GPU frame pool a decoded hardware frame belongs to. */
 void *ffshim_frame_hw_frames_ctx(void *frame) {
     return ((AVFrame *)frame)->hw_frames_ctx;
+}
+
+#include <libavutil/hwcontext.h>
+
+/* The hardware pixel format of a GPU frame pool (AV_PIX_FMT_CUDA,
+   AV_PIX_FMT_VAAPI, AV_PIX_FMT_QSV, ...): what an encoder taking frames
+   from it must be opened with. */
+int ffshim_hwframes_format(void *frames_ref) {
+    if (!frames_ref) return -1;
+    AVBufferRef *ref = (AVBufferRef *)frames_ref;
+    return (int)((AVHWFramesContext *)ref->data)->format;
 }
 
 #ifdef FFSHIM_HAVE_AVFILTER

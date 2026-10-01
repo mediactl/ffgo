@@ -12,7 +12,6 @@ import (
 	"github.com/obinnaokechukwu/ffgo/avcodec"
 	"github.com/obinnaokechukwu/ffgo/avformat"
 	"github.com/obinnaokechukwu/ffgo/avutil"
-	"github.com/obinnaokechukwu/ffgo/internal/bindings"
 	"github.com/obinnaokechukwu/ffgo/internal/handles"
 )
 
@@ -175,7 +174,7 @@ func NewCustomIOContextWithSize(callbacks *IOCallbacks, writable bool, bufferSiz
 	}
 
 	// Ensure FFmpeg is loaded
-	if err := bindings.Load(); err != nil {
+	if err := Init(); err != nil {
 		return nil, err
 	}
 
@@ -510,7 +509,7 @@ func NewEncoderToWriterWithOptions(w io.Writer, format string, opts *EncoderOpti
 // format is the output format (e.g., "mp4", "mkv", "avi").
 func NewEncoderFromIO(callbacks *IOCallbacks, format string, config EncoderConfig) (*Encoder, error) {
 	// Ensure FFmpeg is loaded
-	if err := bindings.Load(); err != nil {
+	if err := Init(); err != nil {
 		return nil, err
 	}
 

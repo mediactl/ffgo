@@ -4,9 +4,10 @@ package ffgo
 
 import (
 	"errors"
-	"github.com/obinnaokechukwu/ffgo/internal/layout"
 	"sync"
 	"unsafe"
+
+	"github.com/obinnaokechukwu/ffgo/internal/layout"
 
 	"github.com/ebitengine/purego"
 	"github.com/obinnaokechukwu/ffgo/avcodec"
@@ -43,7 +44,7 @@ func registerBSFBindings() {
 		return
 	}
 
-	if err := bindings.Load(); err != nil {
+	if err := Init(); err != nil {
 		return
 	}
 

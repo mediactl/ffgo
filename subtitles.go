@@ -4,15 +4,15 @@ package ffgo
 
 import (
 	"errors"
-	"github.com/obinnaokechukwu/ffgo/internal/layout"
 	"sync"
 	"time"
 	"unsafe"
 
+	"github.com/obinnaokechukwu/ffgo/internal/layout"
+
 	"github.com/obinnaokechukwu/ffgo/avcodec"
 	"github.com/obinnaokechukwu/ffgo/avformat"
 	"github.com/obinnaokechukwu/ffgo/avutil"
-	"github.com/obinnaokechukwu/ffgo/internal/bindings"
 )
 
 // SubtitleType represents the type of subtitle content.
@@ -76,7 +76,7 @@ type SubtitleDecoder struct {
 //
 // The stream should come from Decoder.SubtitleStream().
 func NewSubtitleDecoder(stream *StreamInfo) (*SubtitleDecoder, error) {
-	if err := bindings.Load(); err != nil {
+	if err := Init(); err != nil {
 		return nil, err
 	}
 
@@ -135,7 +135,7 @@ func NewSubtitleDecoder(stream *StreamInfo) (*SubtitleDecoder, error) {
 // NewSubtitleDecoderFromFile is a convenience that opens a file and selects its best subtitle stream.
 // Deprecated: prefer using Decoder + NewSubtitleDecoder(decoder.SubtitleStream()) as documented.
 func NewSubtitleDecoderFromFile(inputPath string) (*SubtitleDecoder, error) {
-	if err := bindings.Load(); err != nil {
+	if err := Init(); err != nil {
 		return nil, err
 	}
 

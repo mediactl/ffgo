@@ -28,7 +28,6 @@ var (
 	libAVCodec  uintptr
 	libAVFormat uintptr
 	libSWScale  uintptr
-	libFFShim   uintptr
 
 	loaded   bool
 	loadOnce sync.Once
@@ -96,8 +95,9 @@ func doLoad() error {
 	// swscale is optional, but only the loaded release's.
 	libSWScale, _ = loadLibraryExact("swscale", loadedSet.SWScale)
 
-	// Shim (optional - for logging and AVRational on non-Darwin)
-	libFFShim, _ = loadLibrary("ffshim", []int{0})
+	// The shim is not opened here: internal/shim loads it, and only when it
+	// was linked against this release (a shim from another release on the
+	// library path would map that release's libraries beside these).
 
 	// Register version functions
 	purego.RegisterLibFunc(&avutilVersion, libAVUtil, "avutil_version")
@@ -322,19 +322,9 @@ func LibSWScale() uintptr {
 	return libSWScale
 }
 
-// LibFFShim returns the ffshim library handle.
-func LibFFShim() uintptr {
-	return libFFShim
-}
-
 // HasSWScale returns true if swscale library is available.
 func HasSWScale() bool {
 	return libSWScale != 0
-}
-
-// HasFFShim returns true if the ffshim library is available.
-func HasFFShim() bool {
-	return libFFShim != 0
 }
 
 // LoadLibrary loads a library by name, trying the specified versions.

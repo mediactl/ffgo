@@ -1,8 +1,11 @@
-# The whole test suite against FFmpeg 9.0 shared libraries (mediactl fork).
+# The whole test suite on the FFmpeg releases the mediactl fork supports.
 #
-# ci.yml covers the distribution's FFmpeg (Ubuntu's 6.x). This job covers
-# 9.0, whose struct layouts differ from the Go offsets (written for 6/7):
-# the shim is built against 9.0's headers, and ffgo reads structs through it.
+# 9.0's struct layouts differ from the Go offsets (written for 6/7), so its
+# shim is built against 9.0's headers and ffgo reads structs through it. The
+# distribution jobs (Debian 12's FFmpeg 5.1, Ubuntu 24.04's 6.1) hold the
+# fork to upstream's releases, each with a shim built against its headers.
+# ci.yml runs only on master/main; this workflow runs on the fork's
+# branches too.
 name: FFmpeg 9
 
 on:
@@ -52,4 +55,38 @@ jobs:
         env:
           CGO_ENABLED: "0"
           FFGO_FFMPEG_MAJOR: "9"
+          FFGO_SHIM_DIR: ${{ github.workspace }}/shim
+
+  test-distribution-ffmpeg:
+    runs-on: ubuntu-latest
+    name: Test (${{ matrix.image }})
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["debian:12", "ubuntu:24.04"]
+    container: ${{ matrix.image }}
+    steps:
+      - name: Install FFmpeg, its headers and a C compiler
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            ca-certificates curl git gcc libc6-dev pkg-config ffmpeg \
+            libavcodec-dev libavformat-dev libavutil-dev libswscale-dev \
+            libswresample-dev libavfilter-dev libavdevice-dev
+
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build the shim against the distribution's FFmpeg
+        working-directory: shim
+        run: ./build.sh
+
+      - name: Run tests
+        run: go test -count=1 ./...
+        env:
+          CGO_ENABLED: "0"
           FFGO_SHIM_DIR: ${{ github.workspace }}/shim

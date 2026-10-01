@@ -77,7 +77,7 @@ func NewScaler(srcW, srcH int, srcFmt PixelFormat, dstW, dstH int, dstFmt PixelF
 // NewScalerWithConfig creates a new scaler for the given configuration.
 func NewScalerWithConfig(cfg ScalerConfig) (*Scaler, error) {
 	// Ensure FFmpeg is loaded
-	if err := bindings.Load(); err != nil {
+	if err := Init(); err != nil {
 		return nil, err
 	}
 

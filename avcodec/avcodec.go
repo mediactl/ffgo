@@ -389,7 +389,7 @@ func PacketUnref(pkt Packet) {
 }
 
 // AVCodec struct field offset for name (const char *name at offset 0)
-var offsetCodecName = layout.Offset("AVCodec.name", 8) // After enum AVMediaType type (4 bytes + padding)
+var offsetCodecName = layout.Offset("AVCodec.name", 0)
 
 // GetCodecName returns the name of the codec.
 func GetCodecName(codec Codec) string {

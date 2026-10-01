@@ -9,7 +9,6 @@ import (
 	"github.com/obinnaokechukwu/ffgo/avcodec"
 	"github.com/obinnaokechukwu/ffgo/avformat"
 	"github.com/obinnaokechukwu/ffgo/avutil"
-	"github.com/obinnaokechukwu/ffgo/internal/bindings"
 )
 
 // Remuxer copies streams from input to output without re-encoding.
@@ -49,7 +48,7 @@ func NewRemuxer(outputPath string, decoder *Decoder, cfg *RemuxerConfig) (*Remux
 		return nil, errors.New("ffgo: decoder is required for remuxing")
 	}
 
-	if err := bindings.Load(); err != nil {
+	if err := Init(); err != nil {
 		return nil, err
 	}
 

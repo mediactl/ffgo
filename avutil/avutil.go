@@ -6,6 +6,7 @@
 package avutil
 
 import (
+	"sync"
 	"unsafe"
 
 	"github.com/obinnaokechukwu/ffgo/internal/layout"
@@ -386,12 +387,18 @@ const frameFlagKey = 1 << 1
 // loaded headers have no key_frame, so its Go value is never used.
 var offsetFrameFlags = layout.OptionalOffset("AVFrame.flags", 0)
 
+// keyFrameFromFlags reports, once per process, whether the loaded headers
+// have no AVFrame.key_frame, so the key-frame mark is read from flags.
+var keyFrameFromFlags = sync.OnceValue(func() bool {
+	return layout.ShimLoaded() && !layout.Known("AVFrame.key_frame")
+})
+
 // GetFrameKeyFrame returns 1 if this is a key frame, 0 otherwise.
 func GetFrameKeyFrame(frame Frame) int32 {
 	if frame == nil {
 		return 0
 	}
-	if layout.ShimLoaded() && !layout.Known("AVFrame.key_frame") {
+	if keyFrameFromFlags() {
 		// FFmpeg 9 removed key_frame; reading its old offset read another
 		// field, and every frame came back a keyframe.
 		if *(*int32)(unsafe.Pointer(uintptr(frame) + offsetFrameFlags))&frameFlagKey != 0 {

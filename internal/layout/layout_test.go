@@ -3,10 +3,12 @@
 package layout_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/obinnaokechukwu/ffgo"
 	"github.com/obinnaokechukwu/ffgo/avutil"
+	"github.com/obinnaokechukwu/ffgo/internal/bindings"
 	"github.com/obinnaokechukwu/ffgo/internal/layout"
 )
 
@@ -51,16 +53,43 @@ func TestPixelFormatsComeFromTheLibrary(t *testing.T) {
 		"rgba": avutil.PixelFormatRGBA, "abgr": avutil.PixelFormatABGR,
 		"bgra": avutil.PixelFormatBGRA, "gray16be": avutil.PixelFormatGray16BE,
 		"gray16le": avutil.PixelFormatGray16LE, "rgb48be": avutil.PixelFormatRGB48BE,
-		"rgb48le": avutil.PixelFormatRGB48LE, "rgba64be": avutil.PixelFormatRGBA64BE,
-		"rgba64le": avutil.PixelFormatRGBA64LE,
-		"p010le": avutil.PixelFormatP010LE(), "yuv420p10le": avutil.PixelFormatYUV420P10LE(),
+		"rgb48le": avutil.PixelFormatRGB48LE,
+		"p010le":  avutil.PixelFormatP010LE(), "yuv420p10le": avutil.PixelFormatYUV420P10LE(),
 		"cuda": avutil.PixelFormatCUDA(),
 	} {
 		if got := avutil.PixelFormatByName(name); got != want {
 			t.Errorf("%s: library says %d, ffgo's value is %d", name, got, want)
 		}
 	}
+	// RGBA64BE/LE move between releases (106/107 in 4.4, 104/105 in 9.0);
+	// the deprecated constants hold 9.0's.
+	if set, _ := bindings.LoadedVersionSet(); set.FFmpeg == 9 {
+		for name, want := range map[string]avutil.PixelFormat{
+			"rgba64be": avutil.PixelFormatRGBA64BE, "rgba64le": avutil.PixelFormatRGBA64LE,
+		} {
+			if got := avutil.PixelFormatByName(name); got != want {
+				t.Errorf("%s: FFmpeg 9 says %d, ffgo's value is %d", name, got, want)
+			}
+		}
+	}
 	if avutil.PixelFormatByName("no-such-format") != avutil.PixelFormatNone {
 		t.Error("an unknown name must be PixelFormatNone")
+	}
+}
+
+// AVCodec.name is the first field of AVCodec in every release (long_name
+// follows it); a Go value of 8 read long_name whenever no shim matched, so
+// GetCodecName answered "H.264 / AVC / ..." or "h264" depending on the shim.
+func TestCodecNameOffsetIsTheSameWithAndWithoutAShim(t *testing.T) {
+	if err := ffgo.Init(); err != nil {
+		t.Skipf("no FFmpeg: %v", err)
+	}
+	if !layout.ShimLoaded() {
+		t.Skip("no shim to compare with")
+	}
+	for _, d := range layout.Differences() {
+		if strings.HasPrefix(d, "AVCodec.name:") {
+			t.Fatalf("the Go value of AVCodec.name differs from the headers: %s", d)
+		}
 	}
 }

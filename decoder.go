@@ -12,7 +12,6 @@ import (
 	"github.com/obinnaokechukwu/ffgo/avcodec"
 	"github.com/obinnaokechukwu/ffgo/avformat"
 	"github.com/obinnaokechukwu/ffgo/avutil"
-	"github.com/obinnaokechukwu/ffgo/internal/bindings"
 )
 
 // Decoder decodes media files.
@@ -215,7 +214,7 @@ func NewDecoder(path string, options ...DecoderOption) (*Decoder, error) {
 // NewDecoderWithOptions opens a media file with custom options.
 func NewDecoderWithOptions(path string, opts *DecoderOptions) (*Decoder, error) {
 	// Ensure FFmpeg is loaded
-	if err := bindings.Load(); err != nil {
+	if err := Init(); err != nil {
 		return nil, err
 	}
 

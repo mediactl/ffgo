@@ -9,7 +9,6 @@ import (
 
 	"github.com/obinnaokechukwu/ffgo/avformat"
 	"github.com/obinnaokechukwu/ffgo/avutil"
-	"github.com/obinnaokechukwu/ffgo/internal/bindings"
 )
 
 // FormatProbeResult contains detailed information about FFmpeg's demuxer probing result.
@@ -31,7 +30,7 @@ type FormatProbeResult struct {
 //
 // This opens the input with FFmpeg probing enabled (no explicit format hint) and then closes it.
 func ProbeFormat(path string) (*FormatProbeResult, error) {
-	if err := bindings.Load(); err != nil {
+	if err := Init(); err != nil {
 		return nil, err
 	}
 	if strings.TrimSpace(path) == "" {

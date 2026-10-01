@@ -176,6 +176,7 @@ void ffshim_built_versions(int *avutil, int *avcodec, int *avformat);
 
 /* Hardware frames. */
 void *ffshim_frame_hw_frames_ctx(void *frame);
+int ffshim_hwframes_format(void *frames_ref);
 int ffshim_buffersrc_set_hw_frames(void *src_ctx, void *frames_ref);
 
 #ifdef __cplusplus

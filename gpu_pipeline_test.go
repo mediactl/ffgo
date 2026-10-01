@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/obinnaokechukwu/ffgo/internal/shim"
 )
 
 // The go/no-go for transcoding in-process on the GPU: NVDEC decodes,
@@ -56,6 +58,10 @@ func TestNVDECScaleCUDANVENCKeepsFramesOnTheGPU(t *testing.T) {
 	}
 	defer graph.Close()
 
+	if f, ok := shim.HWFramesFormat(graph.OutputHWFramesCtx()); !ok || PixelFormat(f) != PixelFormatCUDA() {
+		t.Fatalf("scale_cuda's pool format is %d (ok=%v), want CUDA %d", f, ok, PixelFormatCUDA())
+	}
+
 	out := filepath.Join(t.TempDir(), "out.mkv")
 	var enc *Encoder
 	encoded := 0
@@ -87,7 +93,11 @@ func TestNVDECScaleCUDANVENCKeepsFramesOnTheGPU(t *testing.T) {
 	push(frames)
 	for {
 		f, err := dec.ReadHWFrame()
-		if errors.Is(err, io.EOF) {
+		if errors.Is(err, io.EOF) || IsEOF(err) {
+			// Both checks callers use must see the end of the stream.
+			if !errors.Is(err, io.EOF) || !IsEOF(err) {
+				t.Fatalf("end of stream %v: errors.Is(io.EOF)=%v, IsEOF=%v", err, errors.Is(err, io.EOF), IsEOF(err))
+			}
 			break
 		}
 		if err != nil {
@@ -178,5 +188,44 @@ func makeGPUClip(t *testing.T, path string) {
 		"-pix_fmt", "yuv420p", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", path).CombinedOutput()
 	if err != nil {
 		t.Skipf("cannot make the clip (no ffmpeg CLI): %v %s", err, out)
+	}
+}
+
+// HWDecoder.DecodeVideo (software frames out) must return every frame too:
+// it had ReadHWFrame's bug, returning EOF with the decoder's last frames
+// still inside it.
+func TestHWDecoderDecodeVideoReturnsEveryFrame(t *testing.T) {
+	if !requireFFmpeg(t) {
+		t.Skip("FFmpeg not available")
+	}
+	dev, err := NewHWDevice(HWDeviceTypeCUDA, "")
+	if err != nil {
+		t.Skipf("no CUDA device: %v", err)
+	}
+	defer dev.Close()
+	src := filepath.Join(t.TempDir(), "src.mkv")
+	if out, err := exec.Command("ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+		"-f", "lavfi", "-i", "testsrc2=size=640x360:rate=24", "-t", "10",
+		"-pix_fmt", "yuv420p", "-c:v", "libx264", "-preset", "veryfast", src).CombinedOutput(); err != nil {
+		t.Skipf("cannot make the clip: %v %s", err, out)
+	}
+	dec, err := NewHWDecoder(src, &HWDecoderConfig{HWDevice: dev, OutputSoftwareFrames: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dec.Close()
+	n := 0
+	for {
+		_, err := dec.DecodeVideo()
+		if IsEOF(err) {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		n++
+	}
+	if n != 240 {
+		t.Fatalf("decoded %d frames of 240", n)
 	}
 }

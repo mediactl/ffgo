@@ -12,7 +12,7 @@ import (
 	"github.com/obinnaokechukwu/ffgo/avcodec"
 	"github.com/obinnaokechukwu/ffgo/avformat"
 	"github.com/obinnaokechukwu/ffgo/avutil"
-	"github.com/obinnaokechukwu/ffgo/internal/bindings"
+	"github.com/obinnaokechukwu/ffgo/internal/shim"
 )
 
 // Encoder encodes video and/or audio frames to a file.
@@ -112,8 +112,8 @@ type VideoEncoderConfig struct {
 
 	// HWFramesCtx is the GPU frame pool the frames to encode come from (a
 	// filter graph's OutputHWFramesCtx, or a hardware decoder's frames).
-	// The encoder then takes GPU frames as they are (pixel format
-	// PixelFormatCUDA), with no copy to system memory; PixelFormat is
+	// The encoder then takes GPU frames as they are, in the pool's own
+	// hardware pixel format, with no copy to system memory; PixelFormat is
 	// ignored. nil means software frames.
 	HWFramesCtx avutil.HWFramesContext
 
@@ -279,7 +279,7 @@ var ErrEncoderNotFound = errors.New("ffgo: encoder not found")
 // NewEncoder creates a new video encoder.
 func NewEncoder(path string, cfg EncoderConfig) (*Encoder, error) {
 	// Ensure FFmpeg is loaded
-	if err := bindings.Load(); err != nil {
+	if err := Init(); err != nil {
 		return nil, err
 	}
 
@@ -427,7 +427,7 @@ func NewEncoderWithOptions(path string, opts *EncoderOptions) (*Encoder, error) 
 	}
 
 	// Ensure FFmpeg is loaded
-	if err := bindings.Load(); err != nil {
+	if err := Init(); err != nil {
 		return nil, err
 	}
 
@@ -447,7 +447,13 @@ func NewEncoderWithOptions(path string, opts *EncoderOptions) (*Encoder, error) 
 	}
 	pixFmt := video.PixelFormat
 	if video.HWFramesCtx != nil {
-		pixFmt = PixelFormatCUDA()
+		// The pool's own hardware format: CUDA for NVDEC/scale_cuda frames,
+		// VAAPI or QSV for theirs.
+		if f, ok := shim.HWFramesFormat(video.HWFramesCtx); ok {
+			pixFmt = PixelFormat(f)
+		} else {
+			pixFmt = PixelFormatCUDA()
+		}
 	}
 	if pixFmt == PixelFormatNone {
 		pixFmt = PixelFormatYUV420P

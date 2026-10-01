@@ -9,7 +9,6 @@ import (
 	"github.com/obinnaokechukwu/ffgo/avcodec"
 	"github.com/obinnaokechukwu/ffgo/avformat"
 	"github.com/obinnaokechukwu/ffgo/avutil"
-	"github.com/obinnaokechukwu/ffgo/internal/bindings"
 )
 
 // Muxer combines multiple streams into a container.
@@ -48,7 +47,7 @@ type streamEncoder struct {
 // The format parameter is the FFmpeg mux format name (e.g., "matroska", "mp4", "avi").
 // If format is empty, it will be guessed from the file extension.
 func NewMuxer(path string, format string) (*Muxer, error) {
-	if err := bindings.Load(); err != nil {
+	if err := Init(); err != nil {
 		return nil, err
 	}
 

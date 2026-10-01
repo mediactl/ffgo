@@ -5,6 +5,7 @@ package avutil
 import (
 	"errors"
 	"fmt"
+	"io"
 	"syscall"
 )
 
@@ -46,6 +47,12 @@ func NewError(code int32, op string) error {
 		Message: ErrorString(code),
 		Op:      op,
 	}
+}
+
+// Is reports whether e is target: FFmpeg's end of stream (AVERROR_EOF) is
+// io.EOF, so callers can use errors.Is(err, io.EOF) as well as IsEOF.
+func (e *Error) Is(target error) bool {
+	return target == io.EOF && e.Code == AVERROR_EOF
 }
 
 // IsEOF returns true if the error indicates end of file.

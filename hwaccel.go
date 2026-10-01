@@ -5,14 +5,12 @@ package ffgo
 import (
 	"errors"
 	"fmt"
-	"io"
 	"sync"
 	"unsafe"
 
 	"github.com/obinnaokechukwu/ffgo/avcodec"
 	"github.com/obinnaokechukwu/ffgo/avformat"
 	"github.com/obinnaokechukwu/ffgo/avutil"
-	"github.com/obinnaokechukwu/ffgo/internal/bindings"
 )
 
 // HWDeviceType represents a hardware accelerator type.
@@ -48,7 +46,7 @@ type HWDevice struct {
 // device is an optional device path (e.g., "/dev/dri/renderD128" for VAAPI).
 // Pass empty string to use the default device.
 func NewHWDevice(deviceType HWDeviceType, device string) (*HWDevice, error) {
-	if err := bindings.Load(); err != nil {
+	if err := Init(); err != nil {
 		return nil, err
 	}
 
@@ -152,7 +150,7 @@ func NewHWDecoder(inputPath string, cfg *HWDecoderConfig) (*HWDecoder, error) {
 		return nil, errors.New("ffgo: HWDevice is required for hardware decoding")
 	}
 
-	if err := bindings.Load(); err != nil {
+	if err := Init(); err != nil {
 		return nil, err
 	}
 
@@ -296,29 +294,50 @@ func (d *HWDecoder) DecodeVideo() (Frame, error) {
 	if d.closed {
 		return Frame{}, errors.New("ffgo: decoder is closed")
 	}
+	if err := d.nextFrameLocked(); err != nil {
+		return Frame{}, err
+	}
+	// Check if we need to transfer from GPU to CPU
+	if d.outputSoftwareFrame && d.swFrame != nil {
+		avutil.FrameUnref(d.swFrame)
+		err := avutil.HWFrameTransferData(d.swFrame, d.frame, 0)
+		if err == nil {
+			// Transfer succeeded, copy properties
+			avutil.SetFramePTS(d.swFrame, avutil.GetFramePTS(d.frame))
+			return Frame{ptr: d.swFrame, owned: false}, nil
+		}
+		// Transfer failed (frame might already be in software format)
+	}
+	return Frame{ptr: d.frame, owned: false}, nil
+}
 
+// nextFrameLocked decodes the next video frame into d.frame. At the end of
+// the input it drains the decoder -- which still holds up to its delay's
+// worth of frames -- and only then returns the decoder's AVERROR_EOF (also
+// errors.Is(err, io.EOF)). The caller holds d.mu.
+func (d *HWDecoder) nextFrameLocked() error {
 	for {
-		// Try to receive a frame first
 		ret := avcodec.ReceiveFrame(d.videoCodecCtx, d.frame)
 		if ret == nil {
-			// Successfully received a frame
-			// Check if we need to transfer from GPU to CPU
-			if d.outputSoftwareFrame && d.swFrame != nil {
-				avutil.FrameUnref(d.swFrame)
-				err := avutil.HWFrameTransferData(d.swFrame, d.frame, 0)
-				if err == nil {
-					// Transfer succeeded, copy properties
-					avutil.SetFramePTS(d.swFrame, avutil.GetFramePTS(d.frame))
-					return Frame{ptr: d.swFrame, owned: false}, nil
-				}
-				// Transfer failed (frame might already be in software format)
-			}
-			return Frame{ptr: d.frame, owned: false}, nil
+			return nil
+		}
+		if d.draining {
+			// Every buffered frame has been returned.
+			return ret
 		}
 
 		// Need more data, read a packet
 		if err := avformat.ReadFrame(d.formatCtx, d.packet); err != nil {
-			return Frame{}, err
+			if avutil.IsEOF(err) {
+				// No more packets: drain the decoder. Returning EOF here
+				// dropped its last frames.
+				d.draining = true
+				if err := avcodec.SendPacket(d.videoCodecCtx, nil); err != nil {
+					return err
+				}
+				continue
+			}
+			return err
 		}
 
 		// Check if this packet is for our video stream
@@ -333,7 +352,7 @@ func (d *HWDecoder) DecodeVideo() (Frame, error) {
 			avcodec.PacketUnref(d.packet)
 			// EAGAIN means try receive again
 			if !avutil.IsAgain(err) {
-				return Frame{}, err
+				return err
 			}
 		}
 		avcodec.PacketUnref(d.packet)
@@ -351,54 +370,11 @@ func (d *HWDecoder) ReadHWFrame() (Frame, error) {
 	if d.closed {
 		return Frame{}, errors.New("ffgo: decoder is closed")
 	}
-
-	for {
-		// Try to receive a frame first
-		ret := avcodec.ReceiveFrame(d.videoCodecCtx, d.frame)
-		if ret == nil {
-			// Successfully received a frame (stays in GPU memory)
-			return Frame{ptr: d.frame, owned: false}, nil
-		}
-		if d.draining {
-			// Every buffered frame has been returned.
-			if avutil.IsEOF(ret) {
-				return Frame{}, io.EOF
-			}
-			return Frame{}, ret
-		}
-
-		// Need more data, read a packet
-		if err := avformat.ReadFrame(d.formatCtx, d.packet); err != nil {
-			if avutil.IsEOF(err) {
-				// No more packets: drain the decoder, which still holds
-				// up to its delay's worth of frames. Returning EOF here
-				// dropped them.
-				d.draining = true
-				if err := avcodec.SendPacket(d.videoCodecCtx, nil); err != nil {
-					return Frame{}, err
-				}
-				continue
-			}
-			return Frame{}, err
-		}
-
-		// Check if this packet is for our video stream
-		streamIdx := avcodec.GetPacketStreamIndex(d.packet)
-		if int(streamIdx) != d.videoStreamIdx {
-			avcodec.PacketUnref(d.packet)
-			continue
-		}
-
-		// Send packet to decoder
-		if err := avcodec.SendPacket(d.videoCodecCtx, d.packet); err != nil {
-			avcodec.PacketUnref(d.packet)
-			// EAGAIN means try receive again
-			if !avutil.IsAgain(err) {
-				return Frame{}, err
-			}
-		}
-		avcodec.PacketUnref(d.packet)
+	if err := d.nextFrameLocked(); err != nil {
+		return Frame{}, err
 	}
+	// The frame stays in GPU memory.
+	return Frame{ptr: d.frame, owned: false}, nil
 }
 
 // TransferToSystem transfers a hardware frame to a software frame in CPU memory.
