@@ -384,6 +384,15 @@ func (d *Decoder) DurationMicroseconds() int64 {
 	return avformat.GetDuration(d.formatCtx)
 }
 
+// FormatName is the demuxer's name as ffprobe prints format_name
+// ("matroska,webm", "mov,mp4,m4a,3gp,3g2,mj2").
+func (d *Decoder) FormatName() string {
+	if d.formatCtx == nil {
+		return ""
+	}
+	return avformat.InputFormatName(avformat.GetInputFormat(d.formatCtx))
+}
+
 // StartTime is the input's first timestamp: the earliest stream's start,
 // as FFmpeg's demuxer computes it (an MPEG-TS starts near 1.4 s, most
 // Matroska at 0). It is 0 when the input reports none. ffmpeg(1) shifts

@@ -613,3 +613,7 @@ var (
 		GetStreamCodecPar: avformat.GetStreamCodecPar,
 	}
 )
+
+// PixelFormatName is FFmpeg's name for pf ("yuv420p10le"), as ffprobe
+// prints pix_fmt; "" when unknown.
+func PixelFormatName(pf PixelFormat) string { return avutil.PixelFormatName(pf) }

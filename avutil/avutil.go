@@ -65,6 +65,13 @@ var (
 	// Pixel format lookup by name (public API, no shim needed)
 	avGetPixFmt func(name string) int32
 
+	// Names as ffprobe prints them (public API, no shim needed)
+	avGetPixFmtName      func(pixFmt int32) unsafe.Pointer
+	avColorPrimariesName func(v int32) unsafe.Pointer
+	avColorTransferName  func(v int32) unsafe.Pointer
+	avColorSpaceName     func(v int32) unsafe.Pointer
+	avColorRangeName     func(v int32) unsafe.Pointer
+
 	// Hardware context functions
 	avHWDeviceCtxCreate      func(deviceCtx *unsafe.Pointer, deviceType int32, device string, opts uintptr, flags int32) int32
 	avHWDeviceFindTypeByName func(name string) int32
@@ -117,6 +124,11 @@ func registerBindings() {
 
 	purego.RegisterLibFunc(&avStrerror, lib, "av_strerror")
 	purego.RegisterLibFunc(&avGetPixFmt, lib, "av_get_pix_fmt")
+	purego.RegisterLibFunc(&avGetPixFmtName, lib, "av_get_pix_fmt_name")
+	purego.RegisterLibFunc(&avColorPrimariesName, lib, "av_color_primaries_name")
+	purego.RegisterLibFunc(&avColorTransferName, lib, "av_color_transfer_name")
+	purego.RegisterLibFunc(&avColorSpaceName, lib, "av_color_space_name")
+	purego.RegisterLibFunc(&avColorRangeName, lib, "av_color_range_name")
 
 	// Channel layout functions (FFmpeg 5.1+)
 	purego.RegisterLibFunc(&avChannelLayoutDefault, lib, "av_channel_layout_default")
@@ -723,4 +735,28 @@ func goString(ptr unsafe.Pointer) string {
 		return ""
 	}
 	return string((*[256]byte)(ptr)[:length:length])
+}
+
+// PixelFormatName is FFmpeg's name for pf ("yuv420p10le"), as ffprobe
+// prints pix_fmt; "" when unknown.
+func PixelFormatName(pf PixelFormat) string {
+	if avGetPixFmtName == nil {
+		return ""
+	}
+	return goString(avGetPixFmtName(int32(pf)))
+}
+
+// ColorNames are FFmpeg's names for a colour description's codes, as
+// ffprobe prints color_primaries, color_transfer, color_space and
+// color_range ("bt2020", "smpte2084", "bt2020nc", "tv"); "" for any it
+// does not know.
+func ColorNames(primaries, transfer, space, rng int32) (string, string, string, string) {
+	name := func(f func(int32) unsafe.Pointer, v int32) string {
+		if f == nil {
+			return ""
+		}
+		return goString(f(v))
+	}
+	return name(avColorPrimariesName, primaries), name(avColorTransferName, transfer),
+		name(avColorSpaceName, space), name(avColorRangeName, rng)
 }

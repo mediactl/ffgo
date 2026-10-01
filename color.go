@@ -3,6 +3,7 @@
 package ffgo
 
 import (
+	"github.com/obinnaokechukwu/ffgo/avutil"
 	"sync"
 	"unsafe"
 
@@ -90,3 +91,8 @@ func colorOffsetsAvailable() bool {
 	return colorOffOK
 }
 
+// Names are FFmpeg's names for c's codes, as ffprobe prints them: primaries,
+// transfer, space and range ("bt2020", "smpte2084", "bt2020nc", "tv").
+func (c ColorSpec) Names() (primaries, transfer, space, rng string) {
+	return avutil.ColorNames(int32(c.Primaries), int32(c.Transfer), int32(c.Space), int32(c.Range))
+}
