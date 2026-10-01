@@ -1023,3 +1023,13 @@ void ffshim_frame_set_pict_type_none(void *frame) {
 
 /* A frame's channel count, from its AVChannelLayout. */
 int ffshim_frame_nb_channels(void *frame) { return ((AVFrame *)frame)->ch_layout.nb_channels; }
+
+#include <libavutil/imgutils.h>
+
+/* Fills a video frame's buffers with black (limited range). */
+int ffshim_frame_fill_black(void *frame) {
+    AVFrame *f = frame;
+    ptrdiff_t ls[4];
+    for (int i = 0; i < 4; i++) ls[i] = f->linesize[i];
+    return av_image_fill_black(f->data, ls, (enum AVPixelFormat)f->format, AVCOL_RANGE_MPEG, f->width, f->height);
+}

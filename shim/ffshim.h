@@ -212,6 +212,7 @@ int ffshim_hwframes_new(void *device_ref, int format, int sw_format, int width, 
 int ffshim_filter_set_hw_device(void *filter_ctx, void *device_ref);
 void ffshim_frame_set_pict_type_none(void *frame);
 int ffshim_frame_nb_channels(void *frame);
+int ffshim_frame_fill_black(void *frame);
 
 #ifdef __cplusplus
 }

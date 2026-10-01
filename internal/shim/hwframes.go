@@ -10,6 +10,7 @@ var (
 	shimFilterSetHWDevice func(filter, device uintptr) int32
 	shimFrameSetPictNone  func(frame uintptr)
 	shimFrameNbChannels   func(frame uintptr) int32
+	shimFrameFillBlack    func(frame uintptr) int32
 )
 
 func registerHWFramesBindings() {
@@ -18,6 +19,16 @@ func registerHWFramesBindings() {
 	registerOptionalLibFunc(&shimFilterSetHWDevice, libShim, "ffshim_filter_set_hw_device")
 	registerOptionalLibFunc(&shimFrameSetPictNone, libShim, "ffshim_frame_set_pict_type_none")
 	registerOptionalLibFunc(&shimFrameNbChannels, libShim, "ffshim_frame_nb_channels")
+	registerOptionalLibFunc(&shimFrameFillBlack, libShim, "ffshim_frame_fill_black")
+}
+
+// FrameFillBlack fills a video frame's buffers with black; ENOSYS without
+// the shim.
+func FrameFillBlack(frame unsafe.Pointer) int32 {
+	if !loaded || shimFrameFillBlack == nil || frame == nil {
+		return averrorENOSYS
+	}
+	return shimFrameFillBlack(uintptr(frame))
 }
 
 // FrameSetPictTypeNone clears a frame's pict_type; a no-op without the shim.
