@@ -779,3 +779,54 @@ int ffshim_buffersrc_set_hw_frames(void *src_ctx, void *frames_ref) {
     return ret;
 }
 #endif /* FFSHIM_HAVE_AVFILTER */
+
+/* ============================================================================
+ * HEADER ENUM VALUES, STREAM DISPOSITION, CHANNEL LAYOUT NAMES
+ * ============================================================================ */
+
+struct ffshim_enum { const char *name; int value; };
+#define FFSHIM_ENUM(e) { #e, (int)(e) }
+static const struct ffshim_enum ffshim_enums[] = {
+    FFSHIM_ENUM(AV_DISPOSITION_DEFAULT), FFSHIM_ENUM(AV_DISPOSITION_DUB),
+    FFSHIM_ENUM(AV_DISPOSITION_ORIGINAL), FFSHIM_ENUM(AV_DISPOSITION_COMMENT),
+    FFSHIM_ENUM(AV_DISPOSITION_LYRICS), FFSHIM_ENUM(AV_DISPOSITION_KARAOKE),
+    FFSHIM_ENUM(AV_DISPOSITION_FORCED), FFSHIM_ENUM(AV_DISPOSITION_HEARING_IMPAIRED),
+    FFSHIM_ENUM(AV_DISPOSITION_VISUAL_IMPAIRED), FFSHIM_ENUM(AV_DISPOSITION_CLEAN_EFFECTS),
+    FFSHIM_ENUM(AV_DISPOSITION_ATTACHED_PIC), FFSHIM_ENUM(AV_DISPOSITION_CAPTIONS),
+    FFSHIM_ENUM(AV_DISPOSITION_DESCRIPTIONS), FFSHIM_ENUM(AV_DISPOSITION_METADATA),
+    FFSHIM_ENUM(AV_FRAME_DATA_MASTERING_DISPLAY_METADATA),
+    FFSHIM_ENUM(AV_FRAME_DATA_CONTENT_LIGHT_LEVEL),
+    FFSHIM_ENUM(AV_FRAME_DATA_DYNAMIC_HDR_PLUS),
+#if LIBAVUTIL_VERSION_MAJOR >= 57
+    FFSHIM_ENUM(AV_FRAME_DATA_DOVI_RPU_BUFFER),
+    FFSHIM_ENUM(AV_FRAME_DATA_DOVI_METADATA),
+#endif
+    FFSHIM_ENUM(AV_PKT_DATA_MASTERING_DISPLAY_METADATA),
+    FFSHIM_ENUM(AV_PKT_DATA_CONTENT_LIGHT_LEVEL),
+    FFSHIM_ENUM(AV_PKT_DATA_DOVI_CONF),
+#if LIBAVCODEC_VERSION_MAJOR >= 61
+    FFSHIM_ENUM(AV_PKT_DATA_DYNAMIC_HDR10_PLUS),
+#endif
+};
+
+/* An enum value as the headers this shim was compiled against define it. */
+int ffshim_enum_value(const char *name, int *out) {
+    for (size_t i = 0; i < sizeof(ffshim_enums) / sizeof(ffshim_enums[0]); i++) {
+        if (strcmp(ffshim_enums[i].name, name) == 0) {
+            *out = ffshim_enums[i].value;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+int ffshim_stream_disposition(void *st) { return ((AVStream *)st)->disposition; }
+void ffshim_stream_set_disposition(void *st, int d) { ((AVStream *)st)->disposition = d; }
+
+/* A layout's name ("5.1(side)", "7.1"), as av_channel_layout_describe gives it. */
+int ffshim_codecpar_ch_layout_describe(void *par, char *buf, size_t size) {
+    return av_channel_layout_describe(&((AVCodecParameters *)par)->ch_layout, buf, size);
+}
+int ffshim_frame_ch_layout_describe(void *frame, char *buf, size_t size) {
+    return av_channel_layout_describe(&((AVFrame *)frame)->ch_layout, buf, size);
+}

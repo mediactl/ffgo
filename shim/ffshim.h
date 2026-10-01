@@ -179,6 +179,13 @@ void *ffshim_frame_hw_frames_ctx(void *frame);
 int ffshim_hwframes_format(void *frames_ref);
 int ffshim_buffersrc_set_hw_frames(void *src_ctx, void *frames_ref);
 
+/* Header enum values, stream disposition, channel layout names. */
+int ffshim_enum_value(const char *name, int *out);
+int ffshim_stream_disposition(void *st);
+void ffshim_stream_set_disposition(void *st, int d);
+int ffshim_codecpar_ch_layout_describe(void *par, char *buf, size_t size);
+int ffshim_frame_ch_layout_describe(void *frame, char *buf, size_t size);
+
 #ifdef __cplusplus
 }
 #endif

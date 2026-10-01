@@ -53,6 +53,9 @@ var (
 	avChannelLayoutDefault func(chLayout uintptr, nbChannels int32)
 	avChannelLayoutCopy    func(dst, src uintptr) int32
 
+	avChannelLayoutFromString func(chLayout uintptr, str string) int32
+	avChannelLayoutUninit     func(chLayout uintptr)
+
 	// AVOptions API (for setting codec options like preset, profile, etc.)
 	avOptSet       func(obj uintptr, name, val string, searchFlags int32) int32
 	avOptSetInt    func(obj uintptr, name string, val int64, searchFlags int32) int32
@@ -117,6 +120,8 @@ func registerBindings() {
 	// Channel layout functions (FFmpeg 5.1+)
 	purego.RegisterLibFunc(&avChannelLayoutDefault, lib, "av_channel_layout_default")
 	purego.RegisterLibFunc(&avChannelLayoutCopy, lib, "av_channel_layout_copy")
+	purego.RegisterLibFunc(&avChannelLayoutFromString, lib, "av_channel_layout_from_string")
+	purego.RegisterLibFunc(&avChannelLayoutUninit, lib, "av_channel_layout_uninit")
 
 	// AVOptions API
 	purego.RegisterLibFunc(&avOptSet, lib, "av_opt_set")
@@ -518,6 +523,25 @@ func ChannelLayoutCopy(dst, src unsafe.Pointer) error {
 		return NewError(ret, "av_channel_layout_copy")
 	}
 	return nil
+}
+
+// ChannelLayoutFromString fills the AVChannelLayout at chLayout from an
+// FFmpeg layout name ("5.1", "5.1(side)", "7.1", "stereo").
+func ChannelLayoutFromString(chLayout unsafe.Pointer, name string) error {
+	if avChannelLayoutFromString == nil || chLayout == nil {
+		return NewError(-22, "av_channel_layout_from_string")
+	}
+	if ret := avChannelLayoutFromString(uintptr(chLayout), name); ret < 0 {
+		return NewError(ret, "av_channel_layout_from_string "+name)
+	}
+	return nil
+}
+
+// ChannelLayoutUninit frees what an AVChannelLayout holds (a custom map).
+func ChannelLayoutUninit(chLayout unsafe.Pointer) {
+	if avChannelLayoutUninit != nil && chLayout != nil {
+		avChannelLayoutUninit(uintptr(chLayout))
+	}
 }
 
 // AV_OPT_SEARCH constants for av_opt_set functions

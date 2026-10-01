@@ -420,6 +420,13 @@ type StreamInfo struct {
 	Duration   int64 // In time_base units
 	BitRate    int64
 
+	// Filled by Decoder.Streams (they need the shim; zero values without it).
+	Disposition   Disposition // AV_DISPOSITION_* flags
+	Language      string      // the "language" tag
+	Title         string      // the "title" tag
+	ChannelLayout string      // audio: FFmpeg's layout name, e.g. "5.1(side)"
+	Metadata      Metadata    // every stream tag
+
 	// codecPar stores the codec parameters for stream copy operations.
 	codecPar avcodec.Parameters
 }

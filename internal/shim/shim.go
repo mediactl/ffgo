@@ -349,6 +349,8 @@ func registerBindings() {
 	registerOptionalLibFunc(&shimProgramNbStreamIdx, libShim, "ffshim_program_nb_stream_indexes")
 	registerOptionalLibFunc(&shimProgramStreamIndexPtr, libShim, "ffshim_program_stream_index")
 	registerOptionalLibFunc(&shimProgramMetadata, libShim, "ffshim_program_metadata")
+
+	registerStreamBindings()
 }
 
 func registerOptionalLibFunc(fptr any, handle uintptr, name string) {

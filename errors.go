@@ -38,6 +38,14 @@ var (
 	// ErrDeviceEnumerationUnavailable indicates device enumeration is not available
 	// (e.g. missing shim wrappers, unsupported FFmpeg build, or platform constraints).
 	ErrDeviceEnumerationUnavailable = errors.New("ffgo: device enumeration not available")
+
+	// ErrShimRequired: the call reads or writes FFmpeg struct fields only
+	// the C shim, built against the loaded FFmpeg's headers, can reach.
+	ErrShimRequired = errors.New("ffgo: this needs the C shim built against the loaded FFmpeg")
+
+	// ErrNotSupported: the loaded FFmpeg release has no such API (stream
+	// coded side data before FFmpeg 6.1, encoder decoded side data before 7.0).
+	ErrNotSupported = errors.New("ffgo: not supported by the loaded FFmpeg release")
 )
 
 // Error code constants re-exported from avutil
