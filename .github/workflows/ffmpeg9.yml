@@ -25,6 +25,14 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Install the libraries BtbN's build loads at run time
+        # BtbN links libva and the Vulkan loader through generated stubs that
+        # abort the process when the library is missing; the hardware-device
+        # probes (AvailableHWDeviceTypes) reach them.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libva2 libva-drm2 libva-x11-2 libvulkan1
+
       - name: Install FFmpeg 9.0 shared libraries and headers
         run: |
           curl -fsSL -o /tmp/ffmpeg.tar.xz "$FFMPEG_URL"
