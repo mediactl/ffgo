@@ -4,6 +4,7 @@ package ffgo
 
 import (
 	"errors"
+	"github.com/obinnaokechukwu/ffgo/internal/layout"
 	"sync"
 	"time"
 	"unsafe"
@@ -61,9 +62,9 @@ type SubtitleRect struct {
 type SubtitleDecoder struct {
 	mu sync.Mutex
 
-	codecCtx       avcodec.Context
+	codecCtx          avcodec.Context
 	subtitleStreamIdx int
-	streamInfo     *StreamInfo
+	streamInfo        *StreamInfo
 
 	// AVSubtitle struct for decoding
 	subtitle unsafe.Pointer
@@ -232,28 +233,34 @@ func (d *SubtitleDecoder) Close() error {
 }
 
 // AVSubtitle struct offsets (FFmpeg 6.x/7.x)
-const (
-	offsetSubFormat           = 0  // uint32_t format
-	offsetSubStartDisplayTime = 4  // uint32_t start_display_time
-	offsetSubEndDisplayTime   = 8  // uint32_t end_display_time
-	offsetSubNumRects         = 12 // unsigned num_rects
-	offsetSubRects            = 16 // AVSubtitleRect **rects
-	offsetSubPTS              = 24 // int64_t pts
+const ()
+
+// Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	offsetSubFormat           = layout.Offset("AVSubtitle.format", 0)             // uint32_t format
+	offsetSubStartDisplayTime = layout.Offset("AVSubtitle.start_display_time", 4) // uint32_t start_display_time
+	offsetSubEndDisplayTime   = layout.Offset("AVSubtitle.end_display_time", 8)   // uint32_t end_display_time
+	offsetSubNumRects         = layout.Offset("AVSubtitle.num_rects", 12)         // unsigned num_rects
+	offsetSubRects            = layout.Offset("AVSubtitle.rects", 16)             // AVSubtitleRect **rects
+	offsetSubPTS              = layout.Offset("AVSubtitle.pts", 24)               // int64_t pts
 )
 
 // AVSubtitleRect struct offsets
-const (
-	offsetRectX        = 0  // int x
-	offsetRectY        = 4  // int y
-	offsetRectW        = 8  // int w
-	offsetRectH        = 12 // int h
-	offsetRectNbColors = 16 // int nb_colors
-	offsetRectData0    = 24 // uint8_t *data[0]
-	offsetRectData1    = 32 // uint8_t *data[1] (palette)
-	offsetRectLinesize0 = 56 // int linesize[0]
-	offsetRectType     = 72 // enum AVSubtitleType type
-	offsetRectText     = 80 // char *text
-	offsetRectASS      = 88 // char *ass
+const ()
+
+// Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	offsetRectX         = layout.Offset("AVSubtitleRect.x", 0)            // int x
+	offsetRectY         = layout.Offset("AVSubtitleRect.y", 4)            // int y
+	offsetRectW         = layout.Offset("AVSubtitleRect.w", 8)            // int w
+	offsetRectH         = layout.Offset("AVSubtitleRect.h", 12)           // int h
+	offsetRectNbColors  = layout.Offset("AVSubtitleRect.nb_colors", 16)   // int nb_colors
+	offsetRectData0     = layout.Offset("AVSubtitleRect.data[0]", 24)     // uint8_t *data[0]
+	offsetRectData1     = layout.Offset("AVSubtitleRect.data[1]", 32)     // uint8_t *data[1] (palette)
+	offsetRectLinesize0 = layout.Offset("AVSubtitleRect.linesize[0]", 56) // int linesize[0]
+	offsetRectType      = layout.Offset("AVSubtitleRect.type", 72)        // enum AVSubtitleType type
+	offsetRectText      = layout.Offset("AVSubtitleRect.text", 80)        // char *text
+	offsetRectASS       = layout.Offset("AVSubtitleRect.ass", 88)         // char *ass
 )
 
 // AVSubtitleType constants

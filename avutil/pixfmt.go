@@ -7,19 +7,19 @@ type PixelFormat int32
 
 // Common pixel formats (from FFmpeg's pixfmt.h)
 const (
-	PixelFormatNone    PixelFormat = -1
-	PixelFormatYUV420P PixelFormat = 0  // Planar YUV 4:2:0
-	PixelFormatYUYV422 PixelFormat = 1  // Packed YUV 4:2:2
-	PixelFormatRGB24   PixelFormat = 2  // Packed RGB 8:8:8
-	PixelFormatBGR24   PixelFormat = 3  // Packed BGR 8:8:8
-	PixelFormatYUV422P PixelFormat = 4  // Planar YUV 4:2:2
-	PixelFormatYUV444P PixelFormat = 5  // Planar YUV 4:4:4
-	PixelFormatYUV410P PixelFormat = 6  // Planar YUV 4:1:0
-	PixelFormatYUV411P PixelFormat = 7  // Planar YUV 4:1:1
-	PixelFormatGray8   PixelFormat = 8  // 8-bit grayscale
-	PixelFormatMonoW   PixelFormat = 9  // 1-bit monochrome
-	PixelFormatMonoB   PixelFormat = 10 // 1-bit monochrome (black)
-	PixelFormatPAL8    PixelFormat = 11 // 8-bit palette
+	PixelFormatNone     PixelFormat = -1
+	PixelFormatYUV420P  PixelFormat = 0  // Planar YUV 4:2:0
+	PixelFormatYUYV422  PixelFormat = 1  // Packed YUV 4:2:2
+	PixelFormatRGB24    PixelFormat = 2  // Packed RGB 8:8:8
+	PixelFormatBGR24    PixelFormat = 3  // Packed BGR 8:8:8
+	PixelFormatYUV422P  PixelFormat = 4  // Planar YUV 4:2:2
+	PixelFormatYUV444P  PixelFormat = 5  // Planar YUV 4:4:4
+	PixelFormatYUV410P  PixelFormat = 6  // Planar YUV 4:1:0
+	PixelFormatYUV411P  PixelFormat = 7  // Planar YUV 4:1:1
+	PixelFormatGray8    PixelFormat = 8  // 8-bit grayscale
+	PixelFormatMonoW    PixelFormat = 9  // 1-bit monochrome
+	PixelFormatMonoB    PixelFormat = 10 // 1-bit monochrome (black)
+	PixelFormatPAL8     PixelFormat = 11 // 8-bit palette
 	PixelFormatYUVJ420P PixelFormat = 12 // Planar YUV 4:2:0 (JPEG)
 	PixelFormatYUVJ422P PixelFormat = 13 // Planar YUV 4:2:2 (JPEG)
 	PixelFormatYUVJ444P PixelFormat = 14 // Planar YUV 4:4:4 (JPEG)
@@ -33,11 +33,37 @@ const (
 	PixelFormatGray16BE PixelFormat = 29 // 16-bit grayscale (big endian)
 	PixelFormatGray16LE PixelFormat = 30 // 16-bit grayscale (little endian)
 
-	PixelFormatRGB48BE PixelFormat = 41 // Packed RGB 16:16:16 (big endian)
-	PixelFormatRGB48LE PixelFormat = 42 // Packed RGB 16:16:16 (little endian)
-	PixelFormatRGBA64BE PixelFormat = 63 // Packed RGBA 16:16:16:16 (big endian)
-	PixelFormatRGBA64LE PixelFormat = 64 // Packed RGBA 16:16:16:16 (little endian)
+	PixelFormatRGB48BE PixelFormat = 34 // Packed RGB 16:16:16 (big endian); 34 from FFmpeg 4 to 9
+	PixelFormatRGB48LE PixelFormat = 35 // Packed RGB 16:16:16 (little endian); 35 from FFmpeg 4 to 9
+
+	// Deprecated: AV_PIX_FMT_RGBA64BE moves between FFmpeg releases (106 in
+	// 4.4, 104 in 9.0); this is 9.0's. Use PixelFormatByName("rgba64be").
+	PixelFormatRGBA64BE PixelFormat = 104
+	// Deprecated: AV_PIX_FMT_RGBA64LE moves between FFmpeg releases (107 in
+	// 4.4, 105 in 9.0); this is 9.0's. Use PixelFormatByName("rgba64le").
+	PixelFormatRGBA64LE PixelFormat = 105
 )
+
+// PixelFormatByName is the loaded FFmpeg's value for a pixel format name
+// ("p010le", "cuda"), or PixelFormatNone for a name it does not know.
+// Pixel formats are an enum whose values can move between FFmpeg majors;
+// formats beyond the constants above are only ever looked up by name.
+func PixelFormatByName(name string) PixelFormat {
+	if avGetPixFmt == nil {
+		return PixelFormatNone
+	}
+	return PixelFormat(avGetPixFmt(name))
+}
+
+// PixelFormatP010LE is the loaded FFmpeg's AV_PIX_FMT_P010LE.
+func PixelFormatP010LE() PixelFormat { return PixelFormatByName("p010le") }
+
+// PixelFormatYUV420P10LE is the loaded FFmpeg's AV_PIX_FMT_YUV420P10LE.
+func PixelFormatYUV420P10LE() PixelFormat { return PixelFormatByName("yuv420p10le") }
+
+// PixelFormatCUDA is the loaded FFmpeg's AV_PIX_FMT_CUDA, the format of
+// frames held in CUDA (GPU) memory.
+func PixelFormatCUDA() PixelFormat { return PixelFormatByName("cuda") }
 
 // MediaType represents FFmpeg media types.
 type MediaType int32

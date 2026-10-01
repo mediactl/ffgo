@@ -622,3 +622,112 @@ void* ffshim_program_metadata(void *p) {
     }
     return (void*)((AVProgram*)p)->metadata;
 }
+
+/* ============================================================================
+ * STRUCT LAYOUT (offsets as the headers this shim was compiled against say)
+ *
+ * ffgo's Go code reads FFmpeg structs at fixed offsets. Fields move between
+ * FFmpeg majors, and some are removed (AVFrame.key_frame in FFmpeg 9), so
+ * Go asks the shim -- compiled against the same headers as the libraries it
+ * loads -- and audits its own values against the answers.
+ * ============================================================================ */
+
+#include <stddef.h>
+#include <libavcodec/bsf.h>
+#include <libavfilter/avfilter.h>
+#include <libavutil/dict.h>
+
+struct ffshim_field { const char *name; int offset; };
+
+#define FFSHIM_FIELD(type, member) { #type "." #member, (int)offsetof(type, member) }
+
+static const struct ffshim_field ffshim_fields[] = {
+    /* AVFrame */
+    FFSHIM_FIELD(AVFrame, data), FFSHIM_FIELD(AVFrame, linesize),
+    FFSHIM_FIELD(AVFrame, extended_data), FFSHIM_FIELD(AVFrame, width),
+    FFSHIM_FIELD(AVFrame, height), FFSHIM_FIELD(AVFrame, nb_samples),
+    FFSHIM_FIELD(AVFrame, format), FFSHIM_FIELD(AVFrame, pts),
+    FFSHIM_FIELD(AVFrame, sample_rate), FFSHIM_FIELD(AVFrame, buf),
+    FFSHIM_FIELD(AVFrame, extended_buf), FFSHIM_FIELD(AVFrame, nb_extended_buf),
+    FFSHIM_FIELD(AVFrame, flags), FFSHIM_FIELD(AVFrame, ch_layout.nb_channels),
+#if defined(FF_API_FRAME_KEY) && FF_API_FRAME_KEY
+    FFSHIM_FIELD(AVFrame, key_frame),
+#endif
+    /* AVPacket */
+    FFSHIM_FIELD(AVPacket, pts), FFSHIM_FIELD(AVPacket, dts), FFSHIM_FIELD(AVPacket, data),
+    FFSHIM_FIELD(AVPacket, size), FFSHIM_FIELD(AVPacket, stream_index),
+    FFSHIM_FIELD(AVPacket, flags), FFSHIM_FIELD(AVPacket, duration), FFSHIM_FIELD(AVPacket, pos),
+    /* AVCodec */
+    FFSHIM_FIELD(AVCodec, name), FFSHIM_FIELD(AVCodec, long_name),
+    /* AVCodecContext */
+    FFSHIM_FIELD(AVCodecContext, codec_type), FFSHIM_FIELD(AVCodecContext, codec_id),
+    FFSHIM_FIELD(AVCodecContext, bit_rate), FFSHIM_FIELD(AVCodecContext, flags),
+    FFSHIM_FIELD(AVCodecContext, time_base), FFSHIM_FIELD(AVCodecContext, width),
+    FFSHIM_FIELD(AVCodecContext, height), FFSHIM_FIELD(AVCodecContext, gop_size),
+    FFSHIM_FIELD(AVCodecContext, pix_fmt), FFSHIM_FIELD(AVCodecContext, max_b_frames),
+    FFSHIM_FIELD(AVCodecContext, sample_rate), FFSHIM_FIELD(AVCodecContext, sample_fmt),
+    FFSHIM_FIELD(AVCodecContext, frame_size), FFSHIM_FIELD(AVCodecContext, framerate),
+    FFSHIM_FIELD(AVCodecContext, hw_frames_ctx), FFSHIM_FIELD(AVCodecContext, hw_device_ctx),
+    FFSHIM_FIELD(AVCodecContext, ch_layout),
+    /* AVCodecParameters */
+    FFSHIM_FIELD(AVCodecParameters, codec_type), FFSHIM_FIELD(AVCodecParameters, codec_id),
+    FFSHIM_FIELD(AVCodecParameters, codec_tag), FFSHIM_FIELD(AVCodecParameters, extradata),
+    FFSHIM_FIELD(AVCodecParameters, extradata_size), FFSHIM_FIELD(AVCodecParameters, format),
+    FFSHIM_FIELD(AVCodecParameters, width), FFSHIM_FIELD(AVCodecParameters, height),
+    FFSHIM_FIELD(AVCodecParameters, sample_rate), FFSHIM_FIELD(AVCodecParameters, ch_layout.nb_channels),
+    /* AVFormatContext */
+    FFSHIM_FIELD(AVFormatContext, iformat), FFSHIM_FIELD(AVFormatContext, oformat),
+    FFSHIM_FIELD(AVFormatContext, pb), FFSHIM_FIELD(AVFormatContext, nb_streams),
+    FFSHIM_FIELD(AVFormatContext, streams), FFSHIM_FIELD(AVFormatContext, duration),
+    FFSHIM_FIELD(AVFormatContext, bit_rate), FFSHIM_FIELD(AVFormatContext, flags),
+    FFSHIM_FIELD(AVFormatContext, nb_programs), FFSHIM_FIELD(AVFormatContext, programs),
+    FFSHIM_FIELD(AVFormatContext, nb_chapters), FFSHIM_FIELD(AVFormatContext, chapters),
+    FFSHIM_FIELD(AVFormatContext, metadata), FFSHIM_FIELD(AVFormatContext, probe_score),
+    /* AVInputFormat, AVOutputFormat */
+    FFSHIM_FIELD(AVInputFormat, name), FFSHIM_FIELD(AVInputFormat, long_name),
+    FFSHIM_FIELD(AVOutputFormat, flags),
+    /* AVStream */
+    FFSHIM_FIELD(AVStream, index), FFSHIM_FIELD(AVStream, id), FFSHIM_FIELD(AVStream, codecpar),
+    FFSHIM_FIELD(AVStream, time_base), FFSHIM_FIELD(AVStream, metadata),
+    FFSHIM_FIELD(AVStream, avg_frame_rate),
+    /* AVChapter, AVProgram */
+    FFSHIM_FIELD(AVChapter, id), FFSHIM_FIELD(AVChapter, time_base), FFSHIM_FIELD(AVChapter, start),
+    FFSHIM_FIELD(AVChapter, end), FFSHIM_FIELD(AVChapter, metadata),
+    FFSHIM_FIELD(AVProgram, id), FFSHIM_FIELD(AVProgram, stream_index),
+    FFSHIM_FIELD(AVProgram, nb_stream_indexes), FFSHIM_FIELD(AVProgram, metadata),
+    /* AVDictionaryEntry */
+    FFSHIM_FIELD(AVDictionaryEntry, key), FFSHIM_FIELD(AVDictionaryEntry, value),
+    /* AVSubtitle, AVSubtitleRect */
+    FFSHIM_FIELD(AVSubtitle, format), FFSHIM_FIELD(AVSubtitle, start_display_time),
+    FFSHIM_FIELD(AVSubtitle, end_display_time), FFSHIM_FIELD(AVSubtitle, num_rects),
+    FFSHIM_FIELD(AVSubtitle, rects), FFSHIM_FIELD(AVSubtitle, pts),
+    FFSHIM_FIELD(AVSubtitleRect, x), FFSHIM_FIELD(AVSubtitleRect, y),
+    FFSHIM_FIELD(AVSubtitleRect, w), FFSHIM_FIELD(AVSubtitleRect, h),
+    FFSHIM_FIELD(AVSubtitleRect, nb_colors), FFSHIM_FIELD(AVSubtitleRect, data[0]),
+    FFSHIM_FIELD(AVSubtitleRect, data[1]), FFSHIM_FIELD(AVSubtitleRect, linesize[0]),
+    FFSHIM_FIELD(AVSubtitleRect, type), FFSHIM_FIELD(AVSubtitleRect, text),
+    FFSHIM_FIELD(AVSubtitleRect, ass),
+    /* AVBSFContext */
+    FFSHIM_FIELD(AVBSFContext, par_in), FFSHIM_FIELD(AVBSFContext, par_out),
+    FFSHIM_FIELD(AVBSFContext, time_base_in), FFSHIM_FIELD(AVBSFContext, time_base_out),
+    /* AVFilterInOut */
+    FFSHIM_FIELD(AVFilterInOut, name), FFSHIM_FIELD(AVFilterInOut, filter_ctx),
+    FFSHIM_FIELD(AVFilterInOut, pad_idx), FFSHIM_FIELD(AVFilterInOut, next),
+};
+
+int ffshim_offsetof(const char *field) {
+    for (size_t i = 0; i < sizeof(ffshim_fields) / sizeof(ffshim_fields[0]); i++) {
+        if (strcmp(ffshim_fields[i].name, field) == 0) {
+            return ffshim_fields[i].offset;
+        }
+    }
+    return -1;
+}
+
+/* The library majors of the headers this shim was compiled against:
+   its offsets hold only for libraries of these majors. */
+void ffshim_built_versions(int *avutil, int *avcodec, int *avformat) {
+    *avutil = LIBAVUTIL_VERSION_MAJOR;
+    *avcodec = LIBAVCODEC_VERSION_MAJOR;
+    *avformat = LIBAVFORMAT_VERSION_MAJOR;
+}

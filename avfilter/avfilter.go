@@ -5,6 +5,7 @@ package avfilter
 
 import (
 	"fmt"
+	"github.com/obinnaokechukwu/ffgo/internal/layout"
 	"sync"
 	"unsafe"
 
@@ -30,29 +31,29 @@ var (
 	initErr     error
 )
 
-	// Function bindings
-	var (
-		// Graph management
-		avfilter_graph_alloc         func() uintptr
-		avfilter_graph_free          func(graph *Graph)
-		avfilter_graph_config        func(graphctx, log_ctx uintptr) int32
-		avfilter_graph_parse2        func(graph uintptr, filters *byte, inputs, outputs *InOut) int32
-		avfilter_graph_create_filter func(filt_ctx *Context, filt, namePtr, argsPtr, opaque, graphCtx uintptr) int32
+// Function bindings
+var (
+	// Graph management
+	avfilter_graph_alloc         func() uintptr
+	avfilter_graph_free          func(graph *Graph)
+	avfilter_graph_config        func(graphctx, log_ctx uintptr) int32
+	avfilter_graph_parse2        func(graph uintptr, filters *byte, inputs, outputs *InOut) int32
+	avfilter_graph_create_filter func(filt_ctx *Context, filt, namePtr, argsPtr, opaque, graphCtx uintptr) int32
 
-		// Filter lookup
-		avfilter_get_by_name func(name *byte) uintptr
+	// Filter lookup
+	avfilter_get_by_name func(name *byte) uintptr
 
-		// Filter linking
-		avfilter_link func(src uintptr, srcpad uint32, dst uintptr, dstpad uint32) int32
+	// Filter linking
+	avfilter_link func(src uintptr, srcpad uint32, dst uintptr, dstpad uint32) int32
 
-		// Buffer source/sink
-		av_buffersrc_add_frame_flags  func(ctx, frame uintptr, flags int32) int32
-		av_buffersink_get_frame_flags func(ctx, frame uintptr, flags int32) int32
-		av_buffersink_get_frame       func(ctx, frame uintptr) int32
+	// Buffer source/sink
+	av_buffersrc_add_frame_flags  func(ctx, frame uintptr, flags int32) int32
+	av_buffersink_get_frame_flags func(ctx, frame uintptr, flags int32) int32
+	av_buffersink_get_frame       func(ctx, frame uintptr) int32
 
-		// InOut management
-		avfilter_inout_alloc func() uintptr
-		avfilter_inout_free  func(inout *InOut)
+	// InOut management
+	avfilter_inout_alloc func() uintptr
+	avfilter_inout_free  func(inout *InOut)
 
 	// Version
 	avfilter_version func() uint32
@@ -298,17 +299,21 @@ func InOutFree(inout *InOut) {
 }
 
 // AVFilterInOut struct offsets (for FFmpeg 6.x)
-// struct AVFilterInOut {
-//     char *name;            // offset 0
-//     AVFilterContext *filter_ctx;  // offset 8
-//     int pad_idx;           // offset 16
-//     struct AVFilterInOut *next;   // offset 24
-// }
-const (
-	offsetInOutName      = 0
-	offsetInOutFilterCtx = 8
-	offsetInOutPadIdx    = 16
-	offsetInOutNext      = 24
+//
+//	struct AVFilterInOut {
+//	    char *name;            // offset 0
+//	    AVFilterContext *filter_ctx;  // offset 8
+//	    int pad_idx;           // offset 16
+//	    struct AVFilterInOut *next;   // offset 24
+//	}
+const ()
+
+// Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	offsetInOutName      = layout.Offset("AVFilterInOut.name", 0)
+	offsetInOutFilterCtx = layout.Offset("AVFilterInOut.filter_ctx", 8)
+	offsetInOutPadIdx    = layout.Offset("AVFilterInOut.pad_idx", 16)
+	offsetInOutNext      = layout.Offset("AVFilterInOut.next", 24)
 )
 
 // InOutSetName sets the name field of an AVFilterInOut.

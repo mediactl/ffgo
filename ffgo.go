@@ -13,11 +13,13 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strings"
 
 	"github.com/obinnaokechukwu/ffgo/avcodec"
 	"github.com/obinnaokechukwu/ffgo/avformat"
 	"github.com/obinnaokechukwu/ffgo/avutil"
 	"github.com/obinnaokechukwu/ffgo/internal/bindings"
+	"github.com/obinnaokechukwu/ffgo/internal/layout"
 	"github.com/obinnaokechukwu/ffgo/internal/shim"
 )
 
@@ -25,8 +27,29 @@ import (
 // the high-level API, but can be called explicitly to check for errors.
 // It is safe to call multiple times.
 func Init() error {
-	return bindings.Load()
+	if err := bindings.Load(); err != nil {
+		return err
+	}
+	// ffgo's own struct offsets were written for FFmpeg 4-7. A newer release
+	// is only read through the shim built against its headers.
+	if set, _ := bindings.LoadedVersionSet(); set.FFmpeg > 7 && !layout.ShimLoaded() {
+		return fmt.Errorf("ffgo: FFmpeg %d needs the ffshim built against its headers (shim/build.sh prebuilt): %s",
+			set.FFmpeg, strings.Join(layout.Mismatches(), "; "))
+	}
+	return nil
 }
+
+// PixelFormatByName is the loaded FFmpeg's value for a pixel format name.
+func PixelFormatByName(name string) PixelFormat { return avutil.PixelFormatByName(name) }
+
+// PixelFormatP010LE is the loaded FFmpeg's AV_PIX_FMT_P010LE.
+func PixelFormatP010LE() PixelFormat { return avutil.PixelFormatP010LE() }
+
+// PixelFormatYUV420P10LE is the loaded FFmpeg's AV_PIX_FMT_YUV420P10LE.
+func PixelFormatYUV420P10LE() PixelFormat { return avutil.PixelFormatYUV420P10LE() }
+
+// PixelFormatCUDA is the loaded FFmpeg's AV_PIX_FMT_CUDA (frames in GPU memory).
+func PixelFormatCUDA() PixelFormat { return avutil.PixelFormatCUDA() }
 
 // IsLoaded returns true if FFmpeg libraries have been successfully loaded.
 func IsLoaded() bool {
@@ -45,15 +68,15 @@ type DiagnosticInfo struct {
 	GOARCH string
 
 	// FFmpeg library status
-	FFmpegLoaded  bool
-	AVUtilVersion uint32
-	AVCodecVersion uint32
+	FFmpegLoaded    bool
+	AVUtilVersion   uint32
+	AVCodecVersion  uint32
 	AVFormatVersion uint32
 
 	// Shim library status
-	ShimLoaded      bool
-	ShimPath        string
-	ShimError       string
+	ShimLoaded       bool
+	ShimPath         string
+	ShimError        string
 	LoggingAvailable bool
 
 	// Feature availability

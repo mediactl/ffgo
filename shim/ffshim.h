@@ -170,6 +170,10 @@ unsigned int ffshim_program_nb_stream_indexes(void *p);
 unsigned int* ffshim_program_stream_index(void *p);
 void* ffshim_program_metadata(void *p);
 
+/* Struct layout of the headers this shim was compiled against. */
+int ffshim_offsetof(const char *field);
+void ffshim_built_versions(int *avutil, int *avcodec, int *avformat);
+
 #ifdef __cplusplus
 }
 #endif

@@ -11,6 +11,7 @@ import (
 	"github.com/ebitengine/purego"
 	"github.com/obinnaokechukwu/ffgo/avutil"
 	"github.com/obinnaokechukwu/ffgo/internal/handles"
+	"github.com/obinnaokechukwu/ffgo/internal/layout"
 )
 
 // FramePool reuses AVFrame allocations to reduce GC/FFmpeg allocation churn.
@@ -234,8 +235,8 @@ func (f *Frame) WrapBuffer(data []byte, width, height int, format PixelFormat) e
 
 	// Set data pointers/linesizes.
 	base := uintptr(f.ptr)
-	dataArr := (*[8]unsafe.Pointer)(unsafe.Pointer(base + 0)) // AVFrame.data offset is 0
-	lineArr := (*[8]int32)(unsafe.Pointer(base + 64))         // AVFrame.linesize offset is 64
+	dataArr := (*[8]unsafe.Pointer)(unsafe.Pointer(base + poolFrameData))
+	lineArr := (*[8]int32)(unsafe.Pointer(base + poolFrameLinesize))
 	for i := 0; i < 8; i++ {
 		dataArr[i] = nil
 		lineArr[i] = 0
@@ -246,18 +247,18 @@ func (f *Frame) WrapBuffer(data []byte, width, height int, format PixelFormat) e
 	}
 
 	// Ensure extended_data points to data[].
-	*(*unsafe.Pointer)(unsafe.Pointer(base + 96)) = unsafe.Pointer(base + 0) // AVFrame.extended_data offset is 96
+	*(*unsafe.Pointer)(unsafe.Pointer(base + poolFrameExtendedData)) = unsafe.Pointer(base + poolFrameData)
 
 	// Install AVBufferRef into buf[0] and clear other buf pointers.
-	bufArr := (*[8]unsafe.Pointer)(unsafe.Pointer(base + 224)) // AVFrame.buf offset is 224
+	bufArr := (*[8]unsafe.Pointer)(unsafe.Pointer(base + poolFrameBuf))
 	for i := 0; i < 8; i++ {
 		bufArr[i] = nil
 	}
 	bufArr[0] = bufRef
 
 	// Clear extended buffer bookkeeping.
-	*(*unsafe.Pointer)(unsafe.Pointer(base + 288)) = nil // AVFrame.extended_buf offset is 288
-	*(*int32)(unsafe.Pointer(base + 296)) = 0            // AVFrame.nb_extended_buf offset is 296
+	*(*unsafe.Pointer)(unsafe.Pointer(base + poolFrameExtendedBuf)) = nil
+	*(*int32)(unsafe.Pointer(base + poolFrameNbExtendedBuf)) = 0
 
 	return nil
 }
@@ -292,3 +293,14 @@ func planVideoLayout(w, h int, fmt PixelFormat) (planeOffsets []int, linesizes [
 		return nil, nil, 0, errors.New("ffgo: unsupported pixel format for WrapBuffer")
 	}
 }
+
+// AVFrame offsets the pool writes when it installs its own buffer: the
+// shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	poolFrameData          = layout.Offset("AVFrame.data", 0)
+	poolFrameLinesize      = layout.Offset("AVFrame.linesize", 64)
+	poolFrameExtendedData  = layout.Offset("AVFrame.extended_data", 96)
+	poolFrameBuf           = layout.Offset("AVFrame.buf", 224)
+	poolFrameExtendedBuf   = layout.Offset("AVFrame.extended_buf", 288)
+	poolFrameNbExtendedBuf = layout.Offset("AVFrame.nb_extended_buf", 296)
+)

@@ -5,6 +5,7 @@
 package avcodec
 
 import (
+	"github.com/obinnaokechukwu/ffgo/internal/layout"
 	"runtime"
 	"unsafe"
 
@@ -326,8 +327,11 @@ func ParametersCopy(dst, src Parameters) error {
 }
 
 // AVCodecParameters struct field offsets
-const (
-	offsetCodecParTag = 8 // codec_tag at offset 8 (after codec_type and codec_id)
+const ()
+
+// Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	offsetCodecParTag = layout.Offset("AVCodecParameters.codec_tag", 8) // codec_tag at offset 8 (after codec_type and codec_id)
 )
 
 // SetCodecParTag sets the codec tag in codec parameters.
@@ -385,7 +389,7 @@ func PacketUnref(pkt Packet) {
 }
 
 // AVCodec struct field offset for name (const char *name at offset 0)
-const offsetCodecName = 8 // After enum AVMediaType type (4 bytes + padding)
+var offsetCodecName = layout.Offset("AVCodec.name", 8) // After enum AVMediaType type (4 bytes + padding)
 
 // GetCodecName returns the name of the codec.
 func GetCodecName(codec Codec) string {
@@ -418,15 +422,18 @@ func goString(ptr unsafe.Pointer) string {
 }
 
 // Packet field offsets (for FFmpeg 6.x/7.x)
-const (
-	offsetPacketPts         = 8  // int64 pts
-	offsetPacketDts         = 16 // int64 dts
-	offsetPacketData        = 24 // uint8_t *data
-	offsetPacketSize        = 32 // int size
-	offsetPacketStreamIndex = 36 // int stream_index
-	offsetPacketFlags       = 40 // int flags
-	offsetPacketDuration    = 64 // int64 duration
-	offsetPacketPos         = 72 // int64 pos
+const ()
+
+// Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	offsetPacketPts         = layout.Offset("AVPacket.pts", 8)           // int64 pts
+	offsetPacketDts         = layout.Offset("AVPacket.dts", 16)          // int64 dts
+	offsetPacketData        = layout.Offset("AVPacket.data", 24)         // uint8_t *data
+	offsetPacketSize        = layout.Offset("AVPacket.size", 32)         // int size
+	offsetPacketStreamIndex = layout.Offset("AVPacket.stream_index", 36) // int stream_index
+	offsetPacketFlags       = layout.Offset("AVPacket.flags", 40)        // int flags
+	offsetPacketDuration    = layout.Offset("AVPacket.duration", 64)     // int64 duration
+	offsetPacketPos         = layout.Offset("AVPacket.pos", 72)          // int64 pos
 )
 
 // GetPacketPTS returns the presentation timestamp.
@@ -535,24 +542,27 @@ const (
 
 // AVCodecContext struct field offsets (for FFmpeg 6.x / avcodec 60.x)
 // Verified with offsetof() - IMPORTANT: These offsets vary between FFmpeg versions!
-const (
-	offsetCtxCodecType   = 12  // enum AVMediaType codec_type
-	offsetCtxCodecID     = 24  // enum AVCodecID codec_id
-	offsetCtxBitRate     = 56  // int64_t bit_rate
-	offsetCtxFlags       = 76  // int flags
-	offsetCtxTimeBase    = 100 // AVRational time_base
-	offsetCtxWidth       = 116 // int width
-	offsetCtxHeight      = 120 // int height
-	offsetCtxGopSize     = 132 // int gop_size
-	offsetCtxPixFmt      = 136 // enum AVPixelFormat pix_fmt
-	offsetCtxMaxBFrames  = 160 // int max_b_frames
-	offsetCtxSampleRate  = 352 // int sample_rate
-	offsetCtxSampleFmt   = 360 // enum AVSampleFormat sample_fmt
-	offsetCtxFrameSize   = 364 // int frame_size
-	offsetCtxFramerate   = 704 // AVRational framerate
-	offsetCtxHWFramesCtx = 840 // AVBufferRef *hw_frames_ctx
-	offsetCtxHWDeviceCtx = 864 // AVBufferRef *hw_device_ctx
-	offsetCtxChLayout    = 912 // AVChannelLayout ch_layout (FFmpeg 5.1+)
+const ()
+
+// Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	offsetCtxCodecType   = layout.Offset("AVCodecContext.codec_type", 12)     // enum AVMediaType codec_type
+	offsetCtxCodecID     = layout.Offset("AVCodecContext.codec_id", 24)       // enum AVCodecID codec_id
+	offsetCtxBitRate     = layout.Offset("AVCodecContext.bit_rate", 56)       // int64_t bit_rate
+	offsetCtxFlags       = layout.Offset("AVCodecContext.flags", 76)          // int flags
+	offsetCtxTimeBase    = layout.Offset("AVCodecContext.time_base", 100)     // AVRational time_base
+	offsetCtxWidth       = layout.Offset("AVCodecContext.width", 116)         // int width
+	offsetCtxHeight      = layout.Offset("AVCodecContext.height", 120)        // int height
+	offsetCtxGopSize     = layout.Offset("AVCodecContext.gop_size", 132)      // int gop_size
+	offsetCtxPixFmt      = layout.Offset("AVCodecContext.pix_fmt", 136)       // enum AVPixelFormat pix_fmt
+	offsetCtxMaxBFrames  = layout.Offset("AVCodecContext.max_b_frames", 160)  // int max_b_frames
+	offsetCtxSampleRate  = layout.Offset("AVCodecContext.sample_rate", 352)   // int sample_rate
+	offsetCtxSampleFmt   = layout.Offset("AVCodecContext.sample_fmt", 360)    // enum AVSampleFormat sample_fmt
+	offsetCtxFrameSize   = layout.Offset("AVCodecContext.frame_size", 364)    // int frame_size
+	offsetCtxFramerate   = layout.Offset("AVCodecContext.framerate", 704)     // AVRational framerate
+	offsetCtxHWFramesCtx = layout.Offset("AVCodecContext.hw_frames_ctx", 840) // AVBufferRef *hw_frames_ctx
+	offsetCtxHWDeviceCtx = layout.Offset("AVCodecContext.hw_device_ctx", 864) // AVBufferRef *hw_device_ctx
+	offsetCtxChLayout    = layout.Offset("AVCodecContext.ch_layout", 912)     // AVChannelLayout ch_layout (FFmpeg 5.1+)
 )
 
 // GetCtxWidth returns the width from codec context.

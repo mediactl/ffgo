@@ -5,6 +5,7 @@
 package avformat
 
 import (
+	"github.com/obinnaokechukwu/ffgo/internal/layout"
 	"runtime"
 	"unsafe"
 
@@ -420,28 +421,34 @@ func PacketUnref(pkt avcodec.Packet) {
 
 // AVFormatContext struct field offsets (for FFmpeg 6.x / avformat 60.x)
 // Verified with offsetof() on FFmpeg 60.16.100
-const (
-	offsetIOContext       = 32  // AVIOContext *pb
-	offsetInputFormat     = 8   // AVInputFormat *iformat
-	offsetNumStreams      = 44  // unsigned int nb_streams
-	offsetStreams         = 48  // AVStream **streams
-	offsetDuration        = 72  // int64_t duration
-	offsetBitRate         = 80  // int64_t bit_rate
-	offsetNbPrograms      = 132 // unsigned int nb_programs
-	offsetPrograms        = 136 // AVProgram **programs
-	offsetNbChapters      = 164 // unsigned int nb_chapters
-	offsetChapters        = 168 // AVChapter **chapters
-	offsetContextMetadata = 176 // AVDictionary *metadata
-	offsetProbeScore      = 300 // int probe_score
+const ()
+
+// Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	offsetIOContext       = layout.Offset("AVFormatContext.pb", 32)           // AVIOContext *pb
+	offsetInputFormat     = layout.Offset("AVFormatContext.iformat", 8)       // AVInputFormat *iformat
+	offsetNumStreams      = layout.Offset("AVFormatContext.nb_streams", 44)   // unsigned int nb_streams
+	offsetStreams         = layout.Offset("AVFormatContext.streams", 48)      // AVStream **streams
+	offsetDuration        = layout.Offset("AVFormatContext.duration", 72)     // int64_t duration
+	offsetBitRate         = layout.Offset("AVFormatContext.bit_rate", 80)     // int64_t bit_rate
+	offsetNbPrograms      = layout.Offset("AVFormatContext.nb_programs", 132) // unsigned int nb_programs
+	offsetPrograms        = layout.Offset("AVFormatContext.programs", 136)    // AVProgram **programs
+	offsetNbChapters      = layout.Offset("AVFormatContext.nb_chapters", 164) // unsigned int nb_chapters
+	offsetChapters        = layout.Offset("AVFormatContext.chapters", 168)    // AVChapter **chapters
+	offsetContextMetadata = layout.Offset("AVFormatContext.metadata", 176)    // AVDictionary *metadata
+	offsetProbeScore      = layout.Offset("AVFormatContext.probe_score", 300) // int probe_score
 )
 
 // AVChapter struct field offsets (for FFmpeg 6.x)
-const (
-	offsetChapterID       = 0  // int64_t id (actually stored as int64_t in FFmpeg 6.x)
-	offsetChapterTimeBase = 8  // AVRational time_base (num at +8, den at +12)
-	offsetChapterStart    = 16 // int64_t start
-	offsetChapterEnd      = 24 // int64_t end
-	offsetChapterMetadata = 32 // AVDictionary *metadata
+const ()
+
+// Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	offsetChapterID       = layout.Offset("AVChapter.id", 0)        // int64_t id (actually stored as int64_t in FFmpeg 6.x)
+	offsetChapterTimeBase = layout.Offset("AVChapter.time_base", 8) // AVRational time_base (num at +8, den at +12)
+	offsetChapterStart    = layout.Offset("AVChapter.start", 16)    // int64_t start
+	offsetChapterEnd      = layout.Offset("AVChapter.end", 24)      // int64_t end
+	offsetChapterMetadata = layout.Offset("AVChapter.metadata", 32) // AVDictionary *metadata
 )
 
 // Chapter is an opaque FFmpeg AVChapter pointer.
@@ -451,11 +458,14 @@ type Chapter = unsafe.Pointer
 type Program = unsafe.Pointer
 
 // AVProgram struct field offsets (FFmpeg 6.x/7.x)
-const (
-	offsetProgramID            = 0  // int id
-	offsetProgramStreamIndex   = 16 // int *stream_index
-	offsetProgramNbStreamIndex = 24 // unsigned nb_stream_indexes
-	offsetProgramMetadata      = 32 // AVDictionary *metadata
+const ()
+
+// Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	offsetProgramID            = layout.Offset("AVProgram.id", 0)                 // int id
+	offsetProgramStreamIndex   = layout.Offset("AVProgram.stream_index", 16)      // int *stream_index
+	offsetProgramNbStreamIndex = layout.Offset("AVProgram.nb_stream_indexes", 24) // unsigned nb_stream_indexes
+	offsetProgramMetadata      = layout.Offset("AVProgram.metadata", 32)          // AVDictionary *metadata
 )
 
 // GetNumPrograms returns the number of programs in the context (e.g. MPEG-TS).
@@ -552,9 +562,12 @@ func GetProgramMetadata(p Program) avutil.Dictionary {
 }
 
 // AVInputFormat struct field offsets (FFmpeg 6.x/7.x)
-const (
-	offsetInputFormatName     = 0 // const char *name
-	offsetInputFormatLongName = 8 // const char *long_name
+const ()
+
+// Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	offsetInputFormatName     = layout.Offset("AVInputFormat.name", 0)      // const char *name
+	offsetInputFormatLongName = layout.Offset("AVInputFormat.long_name", 8) // const char *long_name
 )
 
 // GetInputFormat returns the input format (demuxer) selected for the context.
@@ -683,13 +696,16 @@ func SetIOContext(ctx FormatContext, pb IOContext) {
 
 // AVStream struct field offsets (for FFmpeg 6.x/7.x)
 // Verified with offsetof() on FFmpeg 7.1.1
-const (
-	offsetStreamIndex        = 8  // int index
-	offsetStreamID           = 12 // int id
-	offsetStreamCodecPar     = 16 // AVCodecParameters *codecpar
-	offsetStreamTimeBase     = 32 // AVRational time_base
-	offsetStreamMetadata     = 80 // AVDictionary *metadata
-	offsetStreamAvgFrameRate = 88 // AVRational avg_frame_rate
+const ()
+
+// Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	offsetStreamIndex        = layout.Offset("AVStream.index", 8)           // int index
+	offsetStreamID           = layout.Offset("AVStream.id", 12)             // int id
+	offsetStreamCodecPar     = layout.Offset("AVStream.codecpar", 16)       // AVCodecParameters *codecpar
+	offsetStreamTimeBase     = layout.Offset("AVStream.time_base", 32)      // AVRational time_base
+	offsetStreamMetadata     = layout.Offset("AVStream.metadata", 80)       // AVDictionary *metadata
+	offsetStreamAvgFrameRate = layout.Offset("AVStream.avg_frame_rate", 88) // AVRational avg_frame_rate
 )
 
 // GetStreamIndex returns the stream index.
@@ -710,16 +726,19 @@ func GetStreamCodecPar(stream Stream) avcodec.Parameters {
 
 // AVCodecParameters struct field offsets (for FFmpeg 6.x/7.x)
 // Verified with offsetof() on FFmpeg 7.1.1
-const (
-	offsetCodecParType          = 0   // enum AVMediaType codec_type
-	offsetCodecParCodecID       = 4   // enum AVCodecID codec_id
-	offsetCodecParExtradata     = 16  // uint8_t *extradata
-	offsetCodecParExtradataSize = 24  // int extradata_size
-	offsetCodecParFormat        = 28  // int format (pixel format or sample format)
-	offsetCodecParWidth         = 56  // int width
-	offsetCodecParHeight        = 60  // int height
-	offsetCodecParSampleRate    = 116 // int sample_rate
-	offsetCodecParChannels      = 148 // ch_layout.nb_channels (int in AVChannelLayout at offset 136 + 12)
+const ()
+
+// Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	offsetCodecParType          = layout.Offset("AVCodecParameters.codec_type", 0)              // enum AVMediaType codec_type
+	offsetCodecParCodecID       = layout.Offset("AVCodecParameters.codec_id", 4)                // enum AVCodecID codec_id
+	offsetCodecParExtradata     = layout.Offset("AVCodecParameters.extradata", 16)              // uint8_t *extradata
+	offsetCodecParExtradataSize = layout.Offset("AVCodecParameters.extradata_size", 24)         // int extradata_size
+	offsetCodecParFormat        = layout.Offset("AVCodecParameters.format", 28)                 // int format (pixel format or sample format)
+	offsetCodecParWidth         = layout.Offset("AVCodecParameters.width", 56)                  // int width
+	offsetCodecParHeight        = layout.Offset("AVCodecParameters.height", 60)                 // int height
+	offsetCodecParSampleRate    = layout.Offset("AVCodecParameters.sample_rate", 116)           // int sample_rate
+	offsetCodecParChannels      = layout.Offset("AVCodecParameters.ch_layout.nb_channels", 148) // ch_layout.nb_channels (int in AVChannelLayout at offset 136 + 12)
 )
 
 // GetCodecParType returns the media type from codec parameters.
@@ -883,13 +902,19 @@ func GetStreamAvgFrameRate(stream Stream) (num, den int32) {
 }
 
 // AVFormatContext output field offsets (for FFmpeg 6.x)
-const (
-	offsetOformat = 16 // AVOutputFormat *oformat
+const ()
+
+// Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	offsetOformat = layout.Offset("AVFormatContext.oformat", 16) // AVOutputFormat *oformat
 )
 
 // AVOutputFormat field offsets (for FFmpeg 6.x)
-const (
-	offsetOutputFormatFlags = 44 // int flags
+const ()
+
+// Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	offsetOutputFormatFlags = layout.Offset("AVOutputFormat.flags", 44) // int flags
 )
 
 // Output format flag constants
@@ -916,7 +941,7 @@ const (
 )
 
 // AVFormatContext flags field offset (for FFmpeg 6.x/7.x)
-const offsetFlags = 96
+var offsetFlags = layout.Offset("AVFormatContext.flags", 96)
 
 // GetFlags returns the flags from a format context.
 func GetFlags(ctx FormatContext) int32 {
@@ -1037,9 +1062,12 @@ const (
 )
 
 // AVDictionaryEntry struct field offsets
-const (
-	offsetDictEntryKey   = 0 // char *key
-	offsetDictEntryValue = 8 // char *value
+const ()
+
+// Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	offsetDictEntryKey   = layout.Offset("AVDictionaryEntry.key", 0)   // char *key
+	offsetDictEntryValue = layout.Offset("AVDictionaryEntry.value", 8) // char *value
 )
 
 // GetMetadata returns the metadata dictionary from a format context.

@@ -108,6 +108,10 @@ var (
 	shimProgramNbStreamIdx    func(p uintptr) uint32
 	shimProgramStreamIndexPtr func(p uintptr) uintptr
 	shimProgramMetadata       func(p uintptr) uintptr
+
+	// Struct layout of the headers the shim was compiled against.
+	shimOffsetof      func(field string) int32
+	shimBuiltVersions func(avutil, avcodec, avformat *int32)
 )
 
 // Load attempts to load the ffshim library.
@@ -278,6 +282,8 @@ func registerBindings() {
 	registerOptionalLibFunc(&shimAVFrameColorOffsets, libShim, "ffshim_avframe_color_offsets")
 
 	// AVCodecParameters field helpers (optional)
+	registerOptionalLibFunc(&shimOffsetof, libShim, "ffshim_offsetof")
+	registerOptionalLibFunc(&shimBuiltVersions, libShim, "ffshim_built_versions")
 	registerOptionalLibFunc(&shimCodecParWidth, libShim, "ffshim_codecpar_width")
 	registerOptionalLibFunc(&shimCodecParHeight, libShim, "ffshim_codecpar_height")
 	registerOptionalLibFunc(&shimCodecParFormat, libShim, "ffshim_codecpar_format")
@@ -937,4 +943,26 @@ func findShimLibrary() (string, error) {
 	expectedName := names[0]
 	return "", fmt.Errorf("%w: looked for %s in %d locations. Set FFGO_SHIM_DIR or build the shim: cd shim && make",
 		ErrShimNotFound, expectedName, len(searchedPaths))
+}
+
+// Offsetof is field's offset ("AVCodecContext.width") in the headers the
+// shim was compiled against, or -1 when the shim is not loaded, predates
+// the layout table, or those headers have no such field.
+func Offsetof(field string) int {
+	if !loaded || shimOffsetof == nil {
+		return -1
+	}
+	return int(shimOffsetof(field))
+}
+
+// BuiltVersions are the libavutil, libavcodec and libavformat majors of
+// the headers the shim was compiled against; ok is false without a shim
+// that reports them.
+func BuiltVersions() (avutil, avcodec, avformat int, ok bool) {
+	if !loaded || shimBuiltVersions == nil {
+		return 0, 0, 0, false
+	}
+	var u, c, f int32
+	shimBuiltVersions(&u, &c, &f)
+	return int(u), int(c), int(f), true
 }

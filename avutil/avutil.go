@@ -8,6 +8,8 @@ package avutil
 import (
 	"unsafe"
 
+	"github.com/obinnaokechukwu/ffgo/internal/layout"
+
 	"github.com/ebitengine/purego"
 	"github.com/obinnaokechukwu/ffgo/internal/bindings"
 )
@@ -54,6 +56,9 @@ var (
 	avOptSet       func(obj uintptr, name, val string, searchFlags int32) int32
 	avOptSetInt    func(obj uintptr, name string, val int64, searchFlags int32) int32
 	avOptSetDouble func(obj uintptr, name string, val float64, searchFlags int32) int32
+
+	// Pixel format lookup by name (public API, no shim needed)
+	avGetPixFmt func(name string) int32
 
 	// Hardware context functions
 	avHWDeviceCtxCreate      func(deviceCtx *unsafe.Pointer, deviceType int32, device string, opts uintptr, flags int32) int32
@@ -106,6 +111,7 @@ func registerBindings() {
 	purego.RegisterLibFunc(&avDictFree, lib, "av_dict_free")
 
 	purego.RegisterLibFunc(&avStrerror, lib, "av_strerror")
+	purego.RegisterLibFunc(&avGetPixFmt, lib, "av_get_pix_fmt")
 
 	// Channel layout functions (FFmpeg 5.1+)
 	purego.RegisterLibFunc(&avChannelLayoutDefault, lib, "av_channel_layout_default")
@@ -208,26 +214,30 @@ const AV_NOPTS_VALUE = NoPTSValue
 // These are used to read/write frame properties without accessing struct fields directly
 // Verified with offsetof() on FFmpeg 58.29.100
 const (
-	// Data pointer array offset
-	offsetData = 0 // uint8_t *data[8] at offset 0
+// Data pointer array offset
 
-	// Linesize array offset
-	offsetLinesize = 64 // int linesize[8] at offset 64
+// Linesize array offset
 
-	// Video frame fields
-	offsetWidth     = 104 // int width at offset 104
-	offsetHeight    = 108 // int height at offset 108
-	offsetNbSamples = 112 // int nb_samples at offset 112
-	offsetFormat    = 116 // int format at offset 116
+// Video frame fields
 
-	// Key frame flag
-	offsetKeyFrame = 120 // int key_frame at offset 120
+// Key frame flag
 
-	// Timing fields
-	offsetPts = 136 // int64 pts at offset 136
+// Timing fields
 
-	// Audio fields
-	offsetSampleRate = 216 // int sample_rate at offset 216 (FFmpeg 6.x)
+// Audio fields
+)
+
+// Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	offsetData       = layout.Offset("AVFrame.data", 0)                // uint8_t *data[8] at offset 0
+	offsetLinesize   = layout.Offset("AVFrame.linesize", 64)           // int linesize[8] at offset 64
+	offsetWidth      = layout.Offset("AVFrame.width", 104)             // int width at offset 104
+	offsetHeight     = layout.Offset("AVFrame.height", 108)            // int height at offset 108
+	offsetNbSamples  = layout.Offset("AVFrame.nb_samples", 112)        // int nb_samples at offset 112
+	offsetFormat     = layout.Offset("AVFrame.format", 116)            // int format at offset 116
+	offsetKeyFrame   = layout.OptionalOffset("AVFrame.key_frame", 120) // int key_frame at offset 120
+	offsetPts        = layout.Offset("AVFrame.pts", 136)               // int64 pts at offset 136
+	offsetSampleRate = layout.Offset("AVFrame.sample_rate", 216)       // int sample_rate at offset 216 (FFmpeg 6.x)
 )
 
 // GetFrameWidth returns the width of the frame.
@@ -333,7 +343,7 @@ func FrameSetSampleRate(frame Frame, sampleRate int32) {
 
 // FrameSetChannels sets the number of audio channels in the frame.
 // Note: In FFmpeg 5.1+, this should be done via AVChannelLayout, but we support legacy mode.
-const offsetChannels = 148 // nb_channels in FFmpeg 5.x+ (via ch_layout.nb_channels)
+var offsetChannels = layout.Offset("AVFrame.ch_layout.nb_channels", 148) // nb_channels in FFmpeg 5.x+ (via ch_layout.nb_channels)
 
 func FrameSetChannels(frame Frame, channels int32) {
 	if frame == nil {
@@ -368,9 +378,25 @@ func FrameGetBuffer(frame Frame, align int32) int32 {
 	return avFrameGetBuffer(uintptr(frame), align)
 }
 
+// frameFlagKey is AV_FRAME_FLAG_KEY: since FFmpeg 6.1 the key-frame mark
+// lives in AVFrame.flags, and FFmpeg 9 removed AVFrame.key_frame.
+const frameFlagKey = 1 << 1
+
+// offsetFrameFlags is AVFrame.flags; read only when the shim says the
+// loaded headers have no key_frame, so its Go value is never used.
+var offsetFrameFlags = layout.OptionalOffset("AVFrame.flags", 0)
+
 // GetFrameKeyFrame returns 1 if this is a key frame, 0 otherwise.
 func GetFrameKeyFrame(frame Frame) int32 {
 	if frame == nil {
+		return 0
+	}
+	if layout.ShimLoaded() && !layout.Known("AVFrame.key_frame") {
+		// FFmpeg 9 removed key_frame; reading its old offset read another
+		// field, and every frame came back a keyframe.
+		if *(*int32)(unsafe.Pointer(uintptr(frame) + offsetFrameFlags))&frameFlagKey != 0 {
+			return 1
+		}
 		return 0
 	}
 	return *(*int32)(unsafe.Pointer(uintptr(frame) + offsetKeyFrame))

@@ -208,10 +208,10 @@ install_lib() {
 }
 
 prebuilt() {
-    # Build and copy to prebuilt directory for distribution
-    if [ ! -f "$OUTPUT" ]; then
-        build
-    fi
+    # Build and copy to prebuilt directory for distribution. Always build:
+    # copying an existing libffshim.so shipped a shim compiled from an older
+    # ffshim.c, or against another FFmpeg's headers.
+    build
 
     PREBUILT_DIR="prebuilt/${OS_NORMALIZED}-${ARCH_NORMALIZED}"
     mkdir -p "$PREBUILT_DIR"

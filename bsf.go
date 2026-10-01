@@ -4,6 +4,7 @@ package ffgo
 
 import (
 	"errors"
+	"github.com/obinnaokechukwu/ffgo/internal/layout"
 	"sync"
 	"unsafe"
 
@@ -88,11 +89,14 @@ const (
 )
 
 // BSFContext field offsets
-const (
-	offsetBsfParIn       = 24 // AVCodecParameters *par_in
-	offsetBsfParOut      = 32 // AVCodecParameters *par_out
-	offsetBsfTimeBaseIn  = 40 // AVRational time_base_in
-	offsetBsfTimeBaseOut = 48 // AVRational time_base_out
+const ()
+
+// Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
+var (
+	offsetBsfParIn       = layout.Offset("AVBSFContext.par_in", 24)        // AVCodecParameters *par_in
+	offsetBsfParOut      = layout.Offset("AVBSFContext.par_out", 32)       // AVCodecParameters *par_out
+	offsetBsfTimeBaseIn  = layout.Offset("AVBSFContext.time_base_in", 40)  // AVRational time_base_in
+	offsetBsfTimeBaseOut = layout.Offset("AVBSFContext.time_base_out", 48) // AVRational time_base_out
 )
 
 // NewBitstreamFilter creates a new bitstream filter.
