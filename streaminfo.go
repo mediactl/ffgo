@@ -52,6 +52,11 @@ func (d *Decoder) Streams() []*StreamInfo {
 		info.Metadata = getMetadataFromDict(avformat.GetStreamMetadata(stream))
 		info.Language = info.Metadata["language"]
 		info.Title = info.Metadata["title"]
+		if info.Type == MediaTypeVideo {
+			if n, d := shim.CodecParSAR(unsafe.Pointer(info.codecPar)); n > 0 && d > 0 {
+				info.SampleAspectRatio = NewRational(n, d)
+			}
+		}
 		if info.Type == MediaTypeAudio {
 			info.ChannelLayout = shim.CodecParChLayoutDescribe(unsafe.Pointer(info.codecPar))
 		}

@@ -213,6 +213,9 @@ int ffshim_filter_set_hw_device(void *filter_ctx, void *device_ref);
 void ffshim_frame_set_pict_type_none(void *frame);
 int ffshim_frame_nb_channels(void *frame);
 int ffshim_frame_fill_black(void *frame);
+void ffshim_codecpar_sar(void *par, int *num, int *den);
+void ffshim_codecctx_set_sar(void *ctx, int num, int den);
+void ffshim_stream_set_sar(void *st, int num, int den);
 
 #ifdef __cplusplus
 }

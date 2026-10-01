@@ -12,7 +12,44 @@ var (
 	shimFrameChLayoutDescribe    func(frame uintptr, buf *byte, size uintptr) int32
 )
 
+var (
+	shimCodecParSAR    func(par uintptr, num, den *int32)
+	shimCodecCtxSetSAR func(ctx uintptr, num, den int32)
+	shimStreamSetSAR   func(st uintptr, num, den int32)
+)
+
+// CodecParSAR is codec parameters' sample aspect ratio; 0/0 without the shim.
+func CodecParSAR(par unsafe.Pointer) (num, den int32) {
+	if !loaded || shimCodecParSAR == nil || par == nil {
+		return 0, 0
+	}
+	shimCodecParSAR(uintptr(par), &num, &den)
+	return num, den
+}
+
+// CodecCtxSetSAR sets an encoder's sample aspect ratio; false without the shim.
+func CodecCtxSetSAR(ctx unsafe.Pointer, num, den int32) bool {
+	if !loaded || shimCodecCtxSetSAR == nil || ctx == nil {
+		return false
+	}
+	shimCodecCtxSetSAR(uintptr(ctx), num, den)
+	return true
+}
+
+// StreamSetSAR sets a stream's sample aspect ratio (what Matroska writes as
+// its display size); false without the shim.
+func StreamSetSAR(st unsafe.Pointer, num, den int32) bool {
+	if !loaded || shimStreamSetSAR == nil || st == nil {
+		return false
+	}
+	shimStreamSetSAR(uintptr(st), num, den)
+	return true
+}
+
 func registerStreamBindings() {
+	registerOptionalLibFunc(&shimCodecParSAR, libShim, "ffshim_codecpar_sar")
+	registerOptionalLibFunc(&shimCodecCtxSetSAR, libShim, "ffshim_codecctx_set_sar")
+	registerOptionalLibFunc(&shimStreamSetSAR, libShim, "ffshim_stream_set_sar")
 	registerOptionalLibFunc(&shimEnumValue, libShim, "ffshim_enum_value")
 	registerOptionalLibFunc(&shimStreamDisposition, libShim, "ffshim_stream_disposition")
 	registerOptionalLibFunc(&shimStreamSetDisposition, libShim, "ffshim_stream_set_disposition")

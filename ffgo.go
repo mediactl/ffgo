@@ -446,6 +446,9 @@ type StreamInfo struct {
 	Title         string      // the "title" tag
 	ChannelLayout string      // audio: FFmpeg's layout name, e.g. "5.1(side)"
 	Metadata      Metadata    // every stream tag
+	// SampleAspectRatio is a video stream's pixel aspect (32:27 for a
+	// 16:9 DVD); zero when unknown or square.
+	SampleAspectRatio Rational
 	// Codec is the codec's FFmpeg name ("hevc", "dts", "av1"), the same
 	// on every release; CodecName is the decoder's ("libdav1d", "dca").
 	Codec string

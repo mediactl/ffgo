@@ -39,9 +39,9 @@ type VideoStreamEncoderConfig struct {
 // EAGAIN has its packets read and the frame sent again, never dropped.
 // CodecOptions the encoder does not have are errors, not ignored.
 type VideoStreamEncoder struct {
-	mu       sync.Mutex
-	ctx      avcodec.Context
-	pkt      avcodec.Packet
+	mu        sync.Mutex
+	ctx       avcodec.Context
+	pkt       avcodec.Packet
 	timeBase  Rational
 	keepTypes bool
 	closed    bool
@@ -116,6 +116,9 @@ func NewVideoStreamEncoder(cfg VideoStreamEncoderConfig) (*VideoStreamEncoder, e
 	}
 	if v.Bitrate > 0 {
 		avcodec.SetCtxBitRate(ctx, v.Bitrate)
+	}
+	if sar := v.SampleAspectRatio; sar.Num > 0 && sar.Den > 0 && !shim.CodecCtxSetSAR(unsafe.Pointer(ctx), sar.Num, sar.Den) {
+		return fail(fmt.Errorf("sample aspect ratio: %w", ErrShimRequired))
 	}
 	typed := v
 	typed.CodecOptions = nil

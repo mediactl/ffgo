@@ -117,6 +117,10 @@ type VideoEncoderConfig struct {
 	// ignored. nil means software frames.
 	HWFramesCtx avutil.HWFramesContext
 
+	// SampleAspectRatio is the pixel aspect the output keeps (an anamorphic
+	// source's); zero leaves it unset. Read by VideoStreamEncoder.
+	SampleAspectRatio Rational
+
 	// Width is the video width in pixels.
 	Width int
 

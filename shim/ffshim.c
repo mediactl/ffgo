@@ -1033,3 +1033,16 @@ int ffshim_frame_fill_black(void *frame) {
     for (int i = 0; i < 4; i++) ls[i] = f->linesize[i];
     return av_image_fill_black(f->data, ls, (enum AVPixelFormat)f->format, AVCOL_RANGE_MPEG, f->width, f->height);
 }
+
+/* Sample aspect ratio: a codec parameter set's, an encoder's, a stream's. */
+void ffshim_codecpar_sar(void *par, int *num, int *den) {
+    AVRational r = ((AVCodecParameters *)par)->sample_aspect_ratio;
+    *num = r.num;
+    *den = r.den;
+}
+void ffshim_codecctx_set_sar(void *ctx, int num, int den) {
+    ((AVCodecContext *)ctx)->sample_aspect_ratio = (AVRational){num, den};
+}
+void ffshim_stream_set_sar(void *st, int num, int den) {
+    ((AVStream *)st)->sample_aspect_ratio = (AVRational){num, den};
+}
