@@ -352,6 +352,7 @@ func registerBindings() {
 
 	registerStreamBindings()
 	registerSideDataBindings()
+	registerAudioBindings()
 }
 
 func registerOptionalLibFunc(fptr any, handle uintptr, name string) {

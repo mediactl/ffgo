@@ -2,8 +2,10 @@ package ffgo
 
 import (
 	"fmt"
+	"unsafe"
 
 	"github.com/obinnaokechukwu/ffgo/avutil"
+	"github.com/obinnaokechukwu/ffgo/internal/shim"
 	"github.com/obinnaokechukwu/ffgo/swresample"
 )
 
@@ -13,6 +15,11 @@ type AudioFormat struct {
 	Channels      int           // e.g., 1, 2, 6
 	ChannelLayout ChannelLayout // e.g., ChannelLayoutStereo
 	SampleFormat  SampleFormat  // e.g., SampleFormatS16, SampleFormatFLTP
+	// Layout is an FFmpeg channel layout name ("7.1", "5.1(side)",
+	// "stereo"). When set it is used instead of the default layout for
+	// Channels (which it also sets), so a 5.1(side) or 7.1(wide) source is
+	// mixed by its channels' positions, not their count. Needs the shim.
+	Layout string
 }
 
 // ChannelLayout represents audio channel configuration
@@ -47,6 +54,19 @@ type Resampler struct {
 //	    ffgo.AudioFormat{SampleRate: 48000, Channels: 2, SampleFormat: ffgo.SampleFormatFLTP},
 //	)
 func NewResampler(src, dst AudioFormat) (*Resampler, error) {
+	for _, f := range []*AudioFormat{&src, &dst} {
+		if f.Layout == "" {
+			continue
+		}
+		n := shim.ChLayoutNbChannels(f.Layout)
+		if n <= 0 {
+			if !shim.AudioAvailable() {
+				return nil, fmt.Errorf("channel layout %q: %w", f.Layout, ErrShimRequired)
+			}
+			return nil, fmt.Errorf("unknown channel layout %q", f.Layout)
+		}
+		f.Channels = n
+	}
 	// Validate inputs
 	if src.SampleRate <= 0 || dst.SampleRate <= 0 {
 		return nil, fmt.Errorf("invalid sample rate: src=%d, dst=%d", src.SampleRate, dst.SampleRate)
@@ -78,8 +98,8 @@ func NewResampler(src, dst AudioFormat) (*Resampler, error) {
 		outLayout := avutil.Malloc(avChannelLayoutBufSize)
 		inLayout := avutil.Malloc(avChannelLayoutBufSize)
 		if outLayout != nil && inLayout != nil {
-			avutil.ChannelLayoutDefault(outLayout, int32(dst.Channels))
-			avutil.ChannelLayoutDefault(inLayout, int32(src.Channels))
+			setLayout(outLayout, dst)
+			setLayout(inLayout, src)
 
 			if err := swresample.AllocSetOpts2(&ctx, outLayout, inLayout,
 				int32(dst.SampleFormat), int32(src.SampleFormat),
@@ -146,7 +166,7 @@ func (r *Resampler) Resample(frame Frame) (Frame, error) {
 
 	// Set output frame parameters
 	avutil.FrameSetSampleRate(outFrame, int32(r.dstFormat.SampleRate))
-	avutil.FrameSetChannels(outFrame, int32(r.dstFormat.Channels))
+	r.setOutLayout(outFrame)
 	avutil.FrameSetFormat(outFrame, int32(r.dstFormat.SampleFormat))
 
 	// Calculate output samples
@@ -193,7 +213,7 @@ func (r *Resampler) Flush() (Frame, error) {
 
 	// Set output frame parameters
 	avutil.FrameSetSampleRate(outFrame, int32(r.dstFormat.SampleRate))
-	avutil.FrameSetChannels(outFrame, int32(r.dstFormat.Channels))
+	r.setOutLayout(outFrame)
 	avutil.FrameSetFormat(outFrame, int32(r.dstFormat.SampleFormat))
 	avutil.FrameSetNbSamples(outFrame, int32(delay))
 
@@ -211,6 +231,24 @@ func (r *Resampler) Flush() (Frame, error) {
 	}
 
 	return Frame{ptr: outFrame, owned: true}, nil
+}
+
+// setLayout fills an AVChannelLayout buffer: by name when f.Layout is set,
+// else the default layout for f.Channels.
+func setLayout(buf unsafe.Pointer, f AudioFormat) {
+	if f.Layout != "" && avutil.ChannelLayoutFromString(buf, f.Layout) == nil {
+		return
+	}
+	avutil.ChannelLayoutDefault(buf, int32(f.Channels))
+}
+
+// setOutLayout gives an output frame the destination layout: the named one
+// (the resampler checks a frame's layout against its own), else the count.
+func (r *Resampler) setOutLayout(frame avutil.Frame) {
+	if r.dstFormat.Layout != "" && shim.FrameSetChLayout(frame, r.dstFormat.Layout) >= 0 {
+		return
+	}
+	avutil.FrameSetChannels(frame, int32(r.dstFormat.Channels))
 }
 
 // Close releases resources

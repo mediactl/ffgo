@@ -914,3 +914,65 @@ int ffshim_codecctx_add_decoded_side_data(void *ctx, int type, const void *data,
     return AVERROR(ENOSYS);
 #endif
 }
+
+/* ============================================================================
+ * AUDIO: channel layouts by name, silence, an audio FIFO for fixed-size frames
+ * ============================================================================ */
+
+#include <libavutil/audio_fifo.h>
+#include <libavutil/samplefmt.h>
+
+int ffshim_ch_layout_nb_channels(const char *name) {
+    AVChannelLayout l = {0};
+    if (av_channel_layout_from_string(&l, name) < 0) return -1;
+    int n = l.nb_channels;
+    av_channel_layout_uninit(&l);
+    return n;
+}
+
+int ffshim_codecctx_set_ch_layout(void *ctx, const char *name) {
+    AVCodecContext *c = ctx;
+    av_channel_layout_uninit(&c->ch_layout);
+    return av_channel_layout_from_string(&c->ch_layout, name);
+}
+
+int ffshim_frame_set_ch_layout(void *frame, const char *name) {
+    AVFrame *f = frame;
+    av_channel_layout_uninit(&f->ch_layout);
+    return av_channel_layout_from_string(&f->ch_layout, name);
+}
+
+int ffshim_frame_set_silence(void *frame) {
+    AVFrame *f = frame;
+    return av_samples_set_silence(f->extended_data, 0, f->nb_samples, f->ch_layout.nb_channels,
+                                  (enum AVSampleFormat)f->format);
+}
+
+/* The encoder's first supported sample format, or -1 when it takes any. */
+int ffshim_codec_first_sample_fmt(void *codec) {
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(61, 13, 100)
+    const void *cfg = NULL;
+    int n = 0;
+    if (avcodec_get_supported_config(NULL, (const AVCodec *)codec, AV_CODEC_CONFIG_SAMPLE_FORMAT, 0, &cfg, &n) < 0 ||
+        !cfg || n == 0)
+        return -1;
+    return ((const enum AVSampleFormat *)cfg)[0];
+#else
+    const enum AVSampleFormat *f = ((const AVCodec *)codec)->sample_fmts;
+    return f ? f[0] : -1;
+#endif
+}
+
+void *ffshim_audio_fifo_alloc(int fmt, int channels, int nb_samples) {
+    return av_audio_fifo_alloc((enum AVSampleFormat)fmt, channels, nb_samples);
+}
+void ffshim_audio_fifo_free(void *fifo) { av_audio_fifo_free((AVAudioFifo *)fifo); }
+int ffshim_audio_fifo_size(void *fifo) { return av_audio_fifo_size((AVAudioFifo *)fifo); }
+int ffshim_audio_fifo_write_frame(void *fifo, void *frame) {
+    AVFrame *f = frame;
+    return av_audio_fifo_write((AVAudioFifo *)fifo, (void **)f->extended_data, f->nb_samples);
+}
+int ffshim_audio_fifo_read_frame(void *fifo, void *frame, int nb_samples) {
+    AVFrame *f = frame;
+    return av_audio_fifo_read((AVAudioFifo *)fifo, (void **)f->extended_data, nb_samples);
+}

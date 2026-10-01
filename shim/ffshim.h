@@ -194,6 +194,18 @@ int ffshim_codecpar_side_data_set(void *par, int type, const void *data, size_t 
 int ffshim_codecpar_nb_side_data(void *par);
 int ffshim_codecctx_add_decoded_side_data(void *ctx, int type, const void *data, size_t size);
 
+/* Audio. */
+int ffshim_ch_layout_nb_channels(const char *name);
+int ffshim_codecctx_set_ch_layout(void *ctx, const char *name);
+int ffshim_frame_set_ch_layout(void *frame, const char *name);
+int ffshim_frame_set_silence(void *frame);
+int ffshim_codec_first_sample_fmt(void *codec);
+void *ffshim_audio_fifo_alloc(int fmt, int channels, int nb_samples);
+void ffshim_audio_fifo_free(void *fifo);
+int ffshim_audio_fifo_size(void *fifo);
+int ffshim_audio_fifo_write_frame(void *fifo, void *frame);
+int ffshim_audio_fifo_read_frame(void *fifo, void *frame, int nb_samples);
+
 #ifdef __cplusplus
 }
 #endif
