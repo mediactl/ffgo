@@ -110,6 +110,13 @@ type VideoEncoderConfig struct {
 	// encoder this FFmpeg build does not have is ErrEncoderNotFound.
 	EncoderName string
 
+	// HWFramesCtx is the GPU frame pool the frames to encode come from (a
+	// filter graph's OutputHWFramesCtx, or a hardware decoder's frames).
+	// The encoder then takes GPU frames as they are (pixel format
+	// PixelFormatCUDA), with no copy to system memory; PixelFormat is
+	// ignored. nil means software frames.
+	HWFramesCtx avutil.HWFramesContext
+
 	// Width is the video width in pixels.
 	Width int
 
@@ -439,6 +446,9 @@ func NewEncoderWithOptions(path string, opts *EncoderOptions) (*Encoder, error) 
 		return nil, errors.New("ffgo: width and height must be positive")
 	}
 	pixFmt := video.PixelFormat
+	if video.HWFramesCtx != nil {
+		pixFmt = PixelFormatCUDA()
+	}
 	if pixFmt == PixelFormatNone {
 		pixFmt = PixelFormatYUV420P
 	}
@@ -542,6 +552,10 @@ func NewEncoderWithOptions(path string, opts *EncoderOptions) (*Encoder, error) 
 	avcodec.SetCtxWidth(e.codecCtx, int32(video.Width))
 	avcodec.SetCtxHeight(e.codecCtx, int32(video.Height))
 	avcodec.SetCtxPixFmt(e.codecCtx, int32(pixFmt))
+	if video.HWFramesCtx != nil {
+		// GPU frames: the encoder reads them from this pool in place.
+		avcodec.SetCtxHWFramesCtx(e.codecCtx, video.HWFramesCtx)
+	}
 	avcodec.SetCtxTimeBase(e.codecCtx, 1, int32(frameRateNum/frameRateDen))
 	avcodec.SetCtxFramerate(e.codecCtx, int32(frameRateNum), int32(frameRateDen))
 	avcodec.SetCtxGopSize(e.codecCtx, int32(gopSize))

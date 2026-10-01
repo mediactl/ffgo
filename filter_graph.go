@@ -11,6 +11,7 @@ import (
 
 	"github.com/obinnaokechukwu/ffgo/avfilter"
 	"github.com/obinnaokechukwu/ffgo/avutil"
+	"github.com/obinnaokechukwu/ffgo/internal/shim"
 )
 
 // FilterGraph represents a filter processing pipeline for video or audio.
@@ -47,6 +48,12 @@ type FilterGraphConfig struct {
 
 	// Filter string (e.g., "scale=320:240,transpose=1")
 	Filters string
+
+	// HWFramesCtx is the GPU frame pool the input frames come from (a
+	// hardware decoder's Frame.HWFramesCtx), with PixelFmt the hardware
+	// format (PixelFormatCUDA). GPU filters such as scale_cuda then run on
+	// the frames in place; nil means software frames.
+	HWFramesCtx avutil.HWFramesContext
 }
 
 // ErrFilterGraphClosed is returned when operating on a closed filter graph.
@@ -150,9 +157,25 @@ func (g *FilterGraph) setupVideoFilters(cfg FilterGraphConfig) error {
 		sar.Num, sar.Den)
 
 	var err error
-	g.bufferSrc, err = avfilter.GraphCreateFilter(g.graph, bufferSrc, "in", srcArgs)
-	if err != nil {
-		return fmt.Errorf("ffgo: failed to create buffersrc: %w", err)
+	if cfg.HWFramesCtx != nil {
+		// GPU frames: the buffersrc refuses a hardware pixel format at
+		// initialisation unless it already has the frames' pool, so it is
+		// allocated, given the pool, then initialised -- the order
+		// avfilter_graph_create_filter cannot express.
+		if g.bufferSrc, err = avfilter.GraphAllocFilter(g.graph, bufferSrc, "in"); err != nil {
+			return fmt.Errorf("ffgo: failed to create buffersrc: %w", err)
+		}
+		if err := shim.BufferSrcSetHWFrames(g.bufferSrc, cfg.HWFramesCtx); err != nil {
+			return err
+		}
+		if err := avfilter.InitStr(g.bufferSrc, srcArgs); err != nil {
+			return fmt.Errorf("ffgo: failed to initialise buffersrc on GPU frames: %w", err)
+		}
+	} else {
+		g.bufferSrc, err = avfilter.GraphCreateFilter(g.graph, bufferSrc, "in", srcArgs)
+		if err != nil {
+			return fmt.Errorf("ffgo: failed to create buffersrc: %w", err)
+		}
 	}
 
 	// Create buffersink
@@ -554,4 +577,14 @@ func (g *FilterGraph) IsVideo() bool {
 // IsAudio returns true if this is an audio filter graph.
 func (g *FilterGraph) IsAudio() bool {
 	return !g.isVideo
+}
+
+// OutputHWFramesCtx is the GPU frame pool the graph's output frames come
+// from (scale_cuda's, for example) -- what an encoder taking those frames
+// needs -- or nil when the graph outputs software frames.
+func (g *FilterGraph) OutputHWFramesCtx() avutil.HWFramesContext {
+	if g.closed {
+		return nil
+	}
+	return avfilter.BuffersinkGetHWFramesCtx(g.bufferSink)
 }

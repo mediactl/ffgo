@@ -114,6 +114,10 @@ var (
 	// Struct layout of the headers the shim was compiled against.
 	shimOffsetof      func(field string) int32
 	shimBuiltVersions func(avutil, avcodec, avformat *int32)
+
+	// Hardware frames.
+	shimFrameHWFramesCtx     func(frame uintptr) uintptr
+	shimBufferSrcSetHWFrames func(src, frames uintptr) int32
 )
 
 // Load attempts to load the ffshim library.
@@ -298,6 +302,8 @@ func registerBindings() {
 	// AVCodecParameters field helpers (optional)
 	registerOptionalLibFunc(&shimOffsetof, libShim, "ffshim_offsetof")
 	registerOptionalLibFunc(&shimBuiltVersions, libShim, "ffshim_built_versions")
+	registerOptionalLibFunc(&shimFrameHWFramesCtx, libShim, "ffshim_frame_hw_frames_ctx")
+	registerOptionalLibFunc(&shimBufferSrcSetHWFrames, libShim, "ffshim_buffersrc_set_hw_frames")
 	registerOptionalLibFunc(&shimCodecParWidth, libShim, "ffshim_codecpar_width")
 	registerOptionalLibFunc(&shimCodecParHeight, libShim, "ffshim_codecpar_height")
 	registerOptionalLibFunc(&shimCodecParFormat, libShim, "ffshim_codecpar_format")
@@ -979,4 +985,28 @@ func BuiltVersions() (avutil, avcodec, avformat int, ok bool) {
 	var u, c, f int32
 	shimBuiltVersions(&u, &c, &f)
 	return int(u), int(c), int(f), true
+}
+
+// FrameHWFramesCtx is the GPU frame pool (an AVBufferRef) a hardware frame
+// belongs to, or nil for a software frame or without the shim.
+func FrameHWFramesCtx(frame unsafe.Pointer) unsafe.Pointer {
+	if !loaded || shimFrameHWFramesCtx == nil || frame == nil {
+		return nil
+	}
+	return unsafe.Pointer(shimFrameHWFramesCtx(uintptr(frame)))
+}
+
+// BufferSrcSetHWFrames gives a buffersrc filter the GPU frame pool its
+// input frames come from.
+func BufferSrcSetHWFrames(src, frames unsafe.Pointer) error {
+	if !loaded {
+		return fmt.Errorf("%w: GPU frames into a filter graph require the shim", ErrShimNotLoaded)
+	}
+	if shimBufferSrcSetHWFrames == nil {
+		return errors.New("ffgo: this shim was built without libavfilter (ffshim_buffersrc_set_hw_frames)")
+	}
+	if ret := shimBufferSrcSetHWFrames(uintptr(src), uintptr(frames)); ret < 0 {
+		return fmt.Errorf("ffgo: av_buffersrc_parameters_set: %d", ret)
+	}
+	return nil
 }

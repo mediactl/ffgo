@@ -634,7 +634,9 @@ void* ffshim_program_metadata(void *p) {
 
 #include <stddef.h>
 #include <libavcodec/bsf.h>
+#ifdef FFSHIM_HAVE_AVFILTER
 #include <libavfilter/avfilter.h>
+#endif
 #include <libavutil/dict.h>
 
 struct ffshim_field { const char *name; int offset; };
@@ -710,9 +712,11 @@ static const struct ffshim_field ffshim_fields[] = {
     /* AVBSFContext */
     FFSHIM_FIELD(AVBSFContext, par_in), FFSHIM_FIELD(AVBSFContext, par_out),
     FFSHIM_FIELD(AVBSFContext, time_base_in), FFSHIM_FIELD(AVBSFContext, time_base_out),
+#ifdef FFSHIM_HAVE_AVFILTER
     /* AVFilterInOut */
     FFSHIM_FIELD(AVFilterInOut, name), FFSHIM_FIELD(AVFilterInOut, filter_ctx),
     FFSHIM_FIELD(AVFilterInOut, pad_idx), FFSHIM_FIELD(AVFilterInOut, next),
+#endif
 };
 
 int ffshim_offsetof(const char *field) {
@@ -731,3 +735,29 @@ void ffshim_built_versions(int *avutil, int *avcodec, int *avformat) {
     *avcodec = LIBAVCODEC_VERSION_MAJOR;
     *avformat = LIBAVFORMAT_VERSION_MAJOR;
 }
+
+/* ============================================================================
+ * HARDWARE FRAMES (GPU frames from a decoder through filters to an encoder)
+ * ============================================================================ */
+
+/* The GPU frame pool a decoded hardware frame belongs to. */
+void *ffshim_frame_hw_frames_ctx(void *frame) {
+    return ((AVFrame *)frame)->hw_frames_ctx;
+}
+
+#ifdef FFSHIM_HAVE_AVFILTER
+#include <libavfilter/buffersrc.h>
+
+/* Gives a buffersrc the GPU frame pool its input frames come from: a
+   filter graph fed GPU frames negotiates nothing without it. The params
+   take their own reference to frames_ref. */
+int ffshim_buffersrc_set_hw_frames(void *src_ctx, void *frames_ref) {
+    AVBufferSrcParameters *p = av_buffersrc_parameters_alloc();
+    if (!p) return AVERROR(ENOMEM);
+    p->format = -1; /* keep the format the buffer was created with */
+    p->hw_frames_ctx = (AVBufferRef *)frames_ref;
+    int ret = av_buffersrc_parameters_set((AVFilterContext *)src_ctx, p);
+    av_free(p);
+    return ret;
+}
+#endif /* FFSHIM_HAVE_AVFILTER */

@@ -174,6 +174,10 @@ void* ffshim_program_metadata(void *p);
 int ffshim_offsetof(const char *field);
 void ffshim_built_versions(int *avutil, int *avcodec, int *avformat);
 
+/* Hardware frames. */
+void *ffshim_frame_hw_frames_ctx(void *frame);
+int ffshim_buffersrc_set_hw_frames(void *src_ctx, void *frames_ref);
+
 #ifdef __cplusplus
 }
 #endif

@@ -317,6 +317,10 @@ func PacketClone(src *Packet) (*Packet, error) {
 // IsNil reports whether the frame pointer is nil.
 func (f Frame) IsNil() bool { return f.ptr == nil }
 
+// HWFramesCtx is the GPU frame pool a hardware frame belongs to (nil for a
+// software frame): what a filter graph or encoder fed GPU frames needs.
+func (f Frame) HWFramesCtx() avutil.HWFramesContext { return shim.FrameHWFramesCtx(f.ptr) }
+
 // Clone returns an owned frame that references the same underlying buffers as f.
 // The returned frame MUST be freed by the caller (via Frame.Free / FrameFree).
 func (f Frame) Clone() (Frame, error) { return FrameClone(f) }

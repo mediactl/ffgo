@@ -4,7 +4,10 @@ package ffgo
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"sync"
+	"unsafe"
 
 	"github.com/obinnaokechukwu/ffgo/avcodec"
 	"github.com/obinnaokechukwu/ffgo/avformat"
@@ -115,6 +118,12 @@ type HWDecoderConfig struct {
 	// returns software frames that can be processed normally.
 	// If false, frames remain in GPU memory and must be transferred manually.
 	OutputSoftwareFrames bool
+
+	// ExtraHWFrames adds GPU surfaces to the decoder's frame pool
+	// (extra_hw_frames). An encoder holding frames for lookahead and
+	// B-frames, or filters holding them, can exhaust a pool sized for the
+	// stream's own references; zero keeps FFmpeg's default.
+	ExtraHWFrames int
 }
 
 // HWDecoder is a hardware-accelerated video decoder.
@@ -134,6 +143,7 @@ type HWDecoder struct {
 	hwDevice            *HWDevice
 	outputSoftwareFrame bool
 	closed              bool
+	draining            bool // the demuxer hit EOF; the decoder is being drained
 }
 
 // NewHWDecoder creates a hardware-accelerated decoder for the given file.
@@ -192,6 +202,13 @@ func NewHWDecoder(inputPath string, cfg *HWDecoderConfig) (*HWDecoder, error) {
 
 	// Set hardware device context BEFORE opening the codec
 	avcodec.SetCtxHWDeviceCtx(codecCtx, cfg.HWDevice.Context())
+	if cfg.ExtraHWFrames > 0 {
+		if err := avutil.OptSetInt(unsafe.Pointer(codecCtx), "extra_hw_frames", int64(cfg.ExtraHWFrames), 0); err != nil {
+			avcodec.FreeContext(&codecCtx)
+			avformat.CloseInput(&formatCtx)
+			return nil, fmt.Errorf("ffgo: extra_hw_frames: %w", err)
+		}
+	}
 
 	// Open codec
 	if err := avcodec.Open2(codecCtx, decoder, nil); err != nil {
@@ -342,9 +359,26 @@ func (d *HWDecoder) ReadHWFrame() (Frame, error) {
 			// Successfully received a frame (stays in GPU memory)
 			return Frame{ptr: d.frame, owned: false}, nil
 		}
+		if d.draining {
+			// Every buffered frame has been returned.
+			if avutil.IsEOF(ret) {
+				return Frame{}, io.EOF
+			}
+			return Frame{}, ret
+		}
 
 		// Need more data, read a packet
 		if err := avformat.ReadFrame(d.formatCtx, d.packet); err != nil {
+			if avutil.IsEOF(err) {
+				// No more packets: drain the decoder, which still holds
+				// up to its delay's worth of frames. Returning EOF here
+				// dropped them.
+				d.draining = true
+				if err := avcodec.SendPacket(d.videoCodecCtx, nil); err != nil {
+					return Frame{}, err
+				}
+				continue
+			}
 			return Frame{}, err
 		}
 

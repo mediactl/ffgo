@@ -142,6 +142,15 @@ get_flags() {
         echo "  libavdevice: not found (device helpers disabled)"
     fi
 
+    # Optional: libavfilter (enables GPU frame pools on filter graph inputs)
+    if pkg-config --exists libavfilter 2>/dev/null; then
+        PKG_LIBS="$PKG_LIBS libavfilter"
+        EXTRA_DEFINES="$EXTRA_DEFINES -DFFSHIM_HAVE_AVFILTER=1"
+        echo "  libavfilter: found (hardware frame helpers enabled)"
+    else
+        echo "  libavfilter: not found (hardware frame helpers disabled)"
+    fi
+
     CFLAGS="$(pkg-config --cflags $PKG_LIBS) -Wall -Wextra -O2 $EXTRA_DEFINES"
     LDFLAGS="$(pkg-config --libs $PKG_LIBS)"
 }

@@ -83,6 +83,11 @@ ifeq ($(HAVE_AVDEVICE),yes)
     PKG_LIBS += libavdevice
     CFLAGS_BASE += -DFFSHIM_HAVE_AVDEVICE=1
 endif
+HAVE_AVFILTER := $(shell pkg-config --exists libavfilter 2>/dev/null && echo yes || echo no)
+ifeq ($(HAVE_AVFILTER),yes)
+    PKG_LIBS += libavfilter
+    CFLAGS_BASE += -DFFSHIM_HAVE_AVFILTER=1
+endif
 
 PKG_CFLAGS := $(shell pkg-config --cflags $(PKG_LIBS) 2>/dev/null)
 PKG_LDFLAGS := $(shell pkg-config --libs $(PKG_LIBS) 2>/dev/null)

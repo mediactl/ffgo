@@ -39,6 +39,8 @@ var (
 	avfilter_graph_config        func(graphctx, log_ctx uintptr) int32
 	avfilter_graph_parse2        func(graph uintptr, filters *byte, inputs, outputs *InOut) int32
 	avfilter_graph_create_filter func(filt_ctx *Context, filt, namePtr, argsPtr, opaque, graphCtx uintptr) int32
+	avfilter_graph_alloc_filter  func(graph, filter uintptr, name string) uintptr
+	avfilter_init_str            func(ctx uintptr, args string) int32
 
 	// Filter lookup
 	avfilter_get_by_name func(name *byte) uintptr
@@ -47,9 +49,10 @@ var (
 	avfilter_link func(src uintptr, srcpad uint32, dst uintptr, dstpad uint32) int32
 
 	// Buffer source/sink
-	av_buffersrc_add_frame_flags  func(ctx, frame uintptr, flags int32) int32
-	av_buffersink_get_frame_flags func(ctx, frame uintptr, flags int32) int32
-	av_buffersink_get_frame       func(ctx, frame uintptr) int32
+	av_buffersrc_add_frame_flags    func(ctx, frame uintptr, flags int32) int32
+	av_buffersink_get_hw_frames_ctx func(ctx uintptr) uintptr
+	av_buffersink_get_frame_flags   func(ctx, frame uintptr, flags int32) int32
+	av_buffersink_get_frame         func(ctx, frame uintptr) int32
 
 	// InOut management
 	avfilter_inout_alloc func() uintptr
@@ -97,6 +100,8 @@ func initLibrary() error {
 	purego.RegisterLibFunc(&avfilter_graph_config, libAVFilter, "avfilter_graph_config")
 	purego.RegisterLibFunc(&avfilter_graph_parse2, libAVFilter, "avfilter_graph_parse2")
 	purego.RegisterLibFunc(&avfilter_graph_create_filter, libAVFilter, "avfilter_graph_create_filter")
+	purego.RegisterLibFunc(&avfilter_graph_alloc_filter, libAVFilter, "avfilter_graph_alloc_filter")
+	purego.RegisterLibFunc(&avfilter_init_str, libAVFilter, "avfilter_init_str")
 	purego.RegisterLibFunc(&avfilter_get_by_name, libAVFilter, "avfilter_get_by_name")
 	purego.RegisterLibFunc(&avfilter_link, libAVFilter, "avfilter_link")
 	purego.RegisterLibFunc(&avfilter_inout_alloc, libAVFilter, "avfilter_inout_alloc")
@@ -105,6 +110,7 @@ func initLibrary() error {
 
 	// Buffer source/sink functions (from libavfilter)
 	purego.RegisterLibFunc(&av_buffersrc_add_frame_flags, libAVFilter, "av_buffersrc_add_frame_flags")
+	purego.RegisterLibFunc(&av_buffersink_get_hw_frames_ctx, libAVFilter, "av_buffersink_get_hw_frames_ctx")
 	purego.RegisterLibFunc(&av_buffersink_get_frame_flags, libAVFilter, "av_buffersink_get_frame_flags")
 	purego.RegisterLibFunc(&av_buffersink_get_frame, libAVFilter, "av_buffersink_get_frame")
 
@@ -378,4 +384,42 @@ func InOutGetNext(inout InOut) InOut {
 	}
 	ptr := uintptr(inout) + offsetInOutNext
 	return *(*unsafe.Pointer)(unsafe.Pointer(ptr))
+}
+
+// BuffersinkGetHWFramesCtx is the GPU frame pool a buffersink's frames come
+// from (an AVBufferRef the sink owns), or nil for software frames.
+func BuffersinkGetHWFramesCtx(ctx Context) unsafe.Pointer {
+	if ctx == nil || av_buffersink_get_hw_frames_ctx == nil {
+		return nil
+	}
+	return unsafe.Pointer(av_buffersink_get_hw_frames_ctx(uintptr(ctx)))
+}
+
+// GraphAllocFilter adds an uninitialised filter instance to graph: for a
+// filter that needs parameters set before it is initialised (a buffersrc
+// fed GPU frames), followed by InitStr.
+func GraphAllocFilter(graph Graph, filter Filter, name string) (Context, error) {
+	if graph == nil || filter == nil {
+		return nil, fmt.Errorf("avfilter: nil graph or filter")
+	}
+	if err := Init(); err != nil {
+		return nil, err
+	}
+	ctx := unsafe.Pointer(avfilter_graph_alloc_filter(uintptr(graph), uintptr(filter), name))
+	if ctx == nil {
+		return nil, fmt.Errorf("avfilter_graph_alloc_filter failed for %q", name)
+	}
+	return ctx, nil
+}
+
+// InitStr initialises a filter allocated with GraphAllocFilter from an
+// options string ("video_size=1920x1080:pix_fmt=...").
+func InitStr(ctx Context, args string) error {
+	if ctx == nil {
+		return fmt.Errorf("avfilter: nil filter context")
+	}
+	if ret := avfilter_init_str(uintptr(ctx), args); ret < 0 {
+		return fmt.Errorf("avfilter_init_str failed: %d", ret)
+	}
+	return nil
 }
