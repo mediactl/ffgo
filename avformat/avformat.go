@@ -1294,3 +1294,19 @@ func goString(ptr unsafe.Pointer) string {
 	}
 	return string((*[4096]byte)(ptr)[:length:length])
 }
+
+// offsetCodecParBitRate is AVCodecParameters.bit_rate, the int64 every
+// release (4 through 9) declares right after the int format: the shim's
+// layout table (which predates it) places format, and bit_rate is the next
+// 8-byte-aligned offset.
+func offsetCodecParBitRate() uintptr { return (offsetCodecParFormat + 4 + 7) &^ 7 }
+
+// GetCodecParBitRate is a stream's bit rate from its codec parameters, as
+// ffprobe prints a stream's bit_rate; 0 when the container records none
+// (Matroska video, for one).
+func GetCodecParBitRate(par unsafe.Pointer) int64 {
+	if par == nil {
+		return 0
+	}
+	return *(*int64)(unsafe.Pointer(uintptr(par) + offsetCodecParBitRate()))
+}

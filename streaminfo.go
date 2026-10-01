@@ -50,6 +50,7 @@ func (d *Decoder) Streams() []*StreamInfo {
 		stream := avformat.GetStream(d.formatCtx, i)
 		info.Disposition = Disposition(shim.StreamDisposition(unsafe.Pointer(stream)))
 		info.Metadata = getMetadataFromDict(avformat.GetStreamMetadata(stream))
+		info.BitRate = avformat.GetCodecParBitRate(unsafe.Pointer(info.codecPar))
 		info.Language = info.Metadata["language"]
 		info.Title = info.Metadata["title"]
 		if info.Type == MediaTypeVideo {

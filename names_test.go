@@ -36,3 +36,21 @@ func TestNamesAsFFprobePrintsThem(t *testing.T) {
 		t.Errorf("colour names %q %q %q %q", p, trc, sp, rng)
 	}
 }
+
+// A stream's bit rate is its codec parameters', as ffprobe prints
+// bit_rate: AC-3's is in its header, 448 kb/s at 5.1 by default.
+func TestStreamsReportTheirBitRate(t *testing.T) {
+	ffmpegOrSkip(t)
+	requireShim(t)
+	path := filepath.Join(t.TempDir(), "ac3.mkv")
+	run(t, "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+		"-f", "lavfi", "-i", "sine=duration=1,aformat=channel_layouts=5.1", "-c:a", "ac3", "-b:a", "448k", path)
+	d, err := NewDecoder(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	if got := d.Streams()[0].BitRate; got != 448000 {
+		t.Errorf("BitRate %d, want 448000", got)
+	}
+}
