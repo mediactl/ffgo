@@ -5,6 +5,7 @@ package ffgo
 import (
 	"errors"
 	"fmt"
+	"io"
 	"sort"
 	"sync"
 	"unsafe"
@@ -26,6 +27,7 @@ type Muxer struct {
 	headerWritten bool
 	path          string
 	closed        bool
+	customIO      *CustomIOContext // set by NewMuxerToWriter; the muxer owns it
 }
 
 // MuxerStream represents a stream being muxed.
@@ -95,6 +97,32 @@ func NewMuxer(path string, format string) (*Muxer, error) {
 		return nil, err
 	}
 
+	return m, nil
+}
+
+// NewMuxerToWriter creates a muxer writing to w. w is never seeked, so a
+// format that rewrites its header on close (plain MP4) must be made
+// streamable through its options, e.g. movflags
+// frag_custom+empty_moov+default_base_moof, passed to WriteHeaderWithOptions.
+func NewMuxerToWriter(w io.Writer, format string) (*Muxer, error) {
+	if err := Init(); err != nil {
+		return nil, err
+	}
+	if w == nil {
+		return nil, errors.New("ffgo: writer cannot be nil")
+	}
+	if format == "" {
+		return nil, errors.New("ffgo: a writer muxer needs a format")
+	}
+	cio, err := NewCustomIOContext(&IOCallbacks{Write: w.Write}, true)
+	if err != nil {
+		return nil, err
+	}
+	m := &Muxer{customIO: cio, streams: make([]*MuxerStream, 0)}
+	if err := avformat.AllocOutputContext2(&m.formatCtx, nil, format, ""); err != nil {
+		_ = cio.Close()
+		return nil, err
+	}
 	return m, nil
 }
 
@@ -545,11 +573,14 @@ func (m *Muxer) WriteHeaderWithOptions(opts map[string]string) error {
 }
 
 func (m *Muxer) writeHeaderLocked(dict *avutil.Dictionary) error {
-	// Open output file
-	if err := avformat.IOOpen(&m.ioCtx, m.path, avformat.IOFlagWrite); err != nil {
-		return err
+	if m.customIO != nil {
+		avformat.SetIOContext(m.formatCtx, m.customIO.AVIOContext())
+	} else {
+		if err := avformat.IOOpen(&m.ioCtx, m.path, avformat.IOFlagWrite); err != nil {
+			return err
+		}
+		avformat.SetIOContext(m.formatCtx, m.ioCtx)
 	}
-	avformat.SetIOContext(m.formatCtx, m.ioCtx)
 
 	// Write header
 	if err := avformat.WriteHeader(m.formatCtx, dict); err != nil {
@@ -670,6 +701,31 @@ func (m *Muxer) WriteTrailer() error {
 	return avformat.WriteTrailer(m.formatCtx)
 }
 
+// Flush ends the fragment being written and pushes every buffered byte to
+// the output: av_write_frame(ctx, NULL), which with movflags=frag_custom
+// makes the mp4 muxer write a fragment of what it holds, then avio_flush.
+// Packets still waiting in av_interleaved_write_frame's queue are not part
+// of it; with one stream per muxer none wait.
+func (m *Muxer) Flush() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.closed {
+		return errors.New("ffgo: muxer is closed")
+	}
+	if !m.headerWritten {
+		return errors.New("ffgo: header not written")
+	}
+	if err := avformat.WriteFrame(m.formatCtx, nil); err != nil {
+		return err
+	}
+	if m.customIO != nil {
+		avformat.IOFlush(m.customIO.AVIOContext())
+	} else {
+		avformat.IOFlush(m.ioCtx)
+	}
+	return nil
+}
+
 // flushEncoder flushes remaining packets from an encoder.
 func (m *Muxer) flushEncoder(ms *MuxerStream) {
 	// Send flush signal (errors during flush are non-fatal)
@@ -727,6 +783,12 @@ func (m *Muxer) Close() error {
 		m.formatCtx = nil
 	}
 
+	// A writer muxer's I/O context is ours, not the format context's.
+	if m.customIO != nil {
+		_ = m.customIO.Close()
+		m.customIO = nil
+	}
+
 	return nil
 }
 
@@ -750,6 +812,14 @@ func (ms *MuxerStream) MediaType() MediaType {
 // TimeBase returns the stream's time base.
 func (ms *MuxerStream) TimeBase() Rational {
 	return ms.timeBase
+}
+
+// OutputTimeBase is the stream's time base in the written container, which
+// the muxer chooses in WriteHeader (mp4: 1/sample rate for audio, a
+// multiple of the frame rate for video). Zero before the header.
+func (ms *MuxerStream) OutputTimeBase() Rational {
+	num, den := avformat.GetStreamTimeBase(ms.stream)
+	return NewRational(num, den)
 }
 
 // IsCopyMode returns true if the stream is in copy mode (no encoding).

@@ -66,6 +66,7 @@ var (
 	avioOpen2        func(ctx *unsafe.Pointer, url string, flags int32, intCb uintptr, options *unsafe.Pointer) int32
 	avioClose        func(ctx uintptr) int32
 	avioClosep       func(ctx *unsafe.Pointer) int32
+	avioFlush        func(ctx uintptr)
 	avioAllocContext func(buffer uintptr, bufferSize, writeFlag int32, opaque uintptr, readPacket, writePacket, seek uintptr) uintptr
 	avioContextFree  func(ctx *unsafe.Pointer)
 
@@ -127,6 +128,7 @@ func registerBindings() {
 	registerOptionalLibFunc(&avioOpen2, lib, "avio_open2")
 	purego.RegisterLibFunc(&avioClose, lib, "avio_close")
 	purego.RegisterLibFunc(&avioClosep, lib, "avio_closep")
+	purego.RegisterLibFunc(&avioFlush, lib, "avio_flush")
 	purego.RegisterLibFunc(&avioAllocContext, lib, "avio_alloc_context")
 	purego.RegisterLibFunc(&avioContextFree, lib, "avio_context_free")
 
@@ -385,6 +387,14 @@ func IOCloseP(ctx *IOContext) error {
 		return avutil.NewError(ret, "avio_closep")
 	}
 	return nil
+}
+
+// IOFlush forces the bytes buffered in ctx out to its writer or file.
+func IOFlush(ctx IOContext) {
+	if ctx == nil || avioFlush == nil {
+		return
+	}
+	avioFlush(uintptr(ctx))
 }
 
 // AVIO flags
