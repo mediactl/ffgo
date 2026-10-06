@@ -1,5 +1,5 @@
 module github.com/obinnaokechukwu/ffgo
 
-go 1.22.2
+go 1.25.0
 
-require github.com/ebitengine/purego v0.9.1
+require github.com/ebitengine/purego v0.11.1
