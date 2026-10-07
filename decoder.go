@@ -325,6 +325,8 @@ func (d *Decoder) getStreamInfo(streamIdx int) *StreamInfo {
 
 	info.Profile = int(avformat.GetCodecParProfile(codecPar))
 	info.Level = int(avformat.GetCodecParLevel(codecPar))
+	info.BitsPerRawSample = int(avformat.GetCodecParBitsPerRawSample(codecPar))
+	info.BitsPerCodedSample = int(avformat.GetCodecParBitsPerCodedSample(codecPar))
 
 	if codecType == avutil.MediaTypeVideo {
 		info.Width = int(avformat.GetCodecParWidth(codecPar))

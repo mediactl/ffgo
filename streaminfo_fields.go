@@ -12,3 +12,8 @@ const ProfileUnknown = -99
 // StreamInfo.CodecID holds it. It is "" when FFmpeg names none; ffprobe then
 // prints the number, unless p is ProfileUnknown.
 func ProfileName(id CodecID, p int) string { return avcodec.ProfileName(id, int32(p)) }
+
+// BitsPerSample is the codec's fixed bits per sample (av_get_bits_per_sample),
+// as ffprobe prints an audio stream's bits_per_sample: 16 for pcm_s16le, 0
+// for a codec without a fixed size such as FLAC.
+func BitsPerSample(id CodecID) int { return int(avcodec.BitsPerSample(id)) }

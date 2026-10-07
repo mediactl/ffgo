@@ -794,7 +794,28 @@ var (
 	offsetCodecParVideoDelay = layout.Offset("AVCodecParameters.video_delay", 120) // int video_delay
 	offsetCodecParProfile    = layout.Offset("AVCodecParameters.profile", 64)      // int profile
 	offsetCodecParLevel      = layout.Offset("AVCodecParameters.level", 68)        // int level
+
+	offsetCodecParBitsPerCodedSample = layout.Offset("AVCodecParameters.bits_per_coded_sample", 56) // int bits_per_coded_sample
+	offsetCodecParBitsPerRawSample   = layout.Offset("AVCodecParameters.bits_per_raw_sample", 60)   // int bits_per_raw_sample
 )
+
+// GetCodecParBitsPerCodedSample is codecpar's bits_per_coded_sample (16 for
+// pcm_s16le).
+func GetCodecParBitsPerCodedSample(par avcodec.Parameters) int32 {
+	if par == nil {
+		return 0
+	}
+	return *(*int32)(unsafe.Pointer(uintptr(par) + offsetCodecParBitsPerCodedSample))
+}
+
+// GetCodecParBitsPerRawSample is codecpar's bits_per_raw_sample (24 for
+// 24-bit FLAC); 0 when unknown.
+func GetCodecParBitsPerRawSample(par avcodec.Parameters) int32 {
+	if par == nil {
+		return 0
+	}
+	return *(*int32)(unsafe.Pointer(uintptr(par) + offsetCodecParBitsPerRawSample))
+}
 
 // GetCodecParProfile is codecpar's profile (AV_PROFILE_UNKNOWN, -99, when unknown).
 func GetCodecParProfile(par avcodec.Parameters) int32 {

@@ -104,6 +104,26 @@ var streamInfoChecks = []streamInfoCheck{
 		want, _ := ff.str("level")
 		return strconv.Itoa(si.Level), want
 	}},
+	{"bits_per_raw_sample", func(si *StreamInfo, ff ffprobeStream) (string, string) {
+		want, _ := ff.str("bits_per_raw_sample")
+		if si.BitsPerRawSample == 0 {
+			return "", want // ffprobe prints N/A, which JSON leaves out, for 0
+		}
+		return strconv.Itoa(si.BitsPerRawSample), want
+	}},
+	{"bits_per_sample", func(si *StreamInfo, ff ffprobeStream) (string, string) {
+		if si.Type != MediaTypeAudio {
+			return "", ""
+		}
+		want, _ := ff.str("bits_per_sample")
+		return strconv.Itoa(BitsPerSample(si.CodecID)), want
+	}},
+	{"bits_per_coded_sample (pcm)", func(si *StreamInfo, _ ffprobeStream) (string, string) {
+		if si.Codec != "pcm_s16le" {
+			return "", ""
+		}
+		return strconv.Itoa(si.BitsPerCodedSample), "16"
+	}},
 }
 
 // fixtureFacts pin that the fixtures give each compared field a real value,
@@ -118,6 +138,8 @@ var fixtureFacts = []struct {
 	{"hdr.mkv", 0, "profile", "Main 10"},
 	{"avc.mp4", 1, "profile", "LC"},
 	{"avc.mp4", 0, "level", ""},
+	{"hdr.mkv", 1, "bits_per_raw_sample", "24"},
+	{"hdr.mkv", 2, "bits_per_sample", "16"},
 }
 
 func TestStreamInfoReadsWhatFFprobePrints(t *testing.T) {

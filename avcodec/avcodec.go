@@ -62,6 +62,7 @@ var (
 
 	// Probe names and sizes (public API, no shim needed)
 	avcodecProfileName func(id, profile int32) unsafe.Pointer
+	avGetBitsPerSample func(id int32) int32
 
 	bindingsRegistered bool
 )
@@ -114,6 +115,7 @@ func registerBindings() {
 	purego.RegisterLibFunc(&avsubtitleFree, lib, "avsubtitle_free")
 	registerOptionalLibFunc(&avcodecEncodeSubtitle, lib, "avcodec_encode_subtitle")
 	registerOptionalLibFunc(&avcodecProfileName, lib, "avcodec_profile_name")
+	registerOptionalLibFunc(&avGetBitsPerSample, lib, "av_get_bits_per_sample")
 
 	bindingsRegistered = true
 }
@@ -1229,6 +1231,16 @@ func ProfileName(id CodecID, p int32) string {
 		return ""
 	}
 	return goString(name)
+}
+
+// BitsPerSample is av_get_bits_per_sample: the codec's fixed bits per
+// sample (16 for pcm_s16le), 0 for a codec without one; id is numbered as
+// the loaded library numbers it.
+func BitsPerSample(id CodecID) int32 {
+	if avGetBitsPerSample == nil {
+		return 0
+	}
+	return avGetBitsPerSample(int32(id))
 }
 
 // SubtitleFree frees subtitle resources.
