@@ -22,7 +22,7 @@ var (
 
 // Function bindings
 var (
-	swr_alloc           func() uintptr
+	swr_alloc           func() unsafe.Pointer
 	swr_init            func(s uintptr) int32
 	swr_free            func(s *SwrContext)
 	swr_convert         func(s, out, in uintptr, outCount, inCount int32) int32
@@ -42,7 +42,7 @@ var (
 	swr_alloc_set_opts func(s uintptr,
 		outChLayout int64, outFmt, outRate int32,
 		inChLayout int64, inFmt, inRate int32,
-		logOffset int32, logCtx uintptr) uintptr
+		logOffset int32, logCtx uintptr) unsafe.Pointer
 )
 
 // Init initializes the swresample library bindings
@@ -90,7 +90,7 @@ func Alloc() SwrContext {
 	if err := Init(); err != nil {
 		return nil
 	}
-	return unsafe.Pointer(swr_alloc())
+	return swr_alloc()
 }
 
 // AllocSetOpts allocates and configures a SwrContext with the given parameters
@@ -103,8 +103,8 @@ func AllocSetOpts(s SwrContext, outChLayout int64, outSampleFmt, outSampleRate i
 	if swr_alloc_set_opts == nil {
 		return nil
 	}
-	return unsafe.Pointer(swr_alloc_set_opts(uintptr(s), outChLayout, outSampleFmt, outSampleRate,
-		inChLayout, inSampleFmt, inSampleRate, 0, 0))
+	return swr_alloc_set_opts(uintptr(s), outChLayout, outSampleFmt, outSampleRate,
+		inChLayout, inSampleFmt, inSampleRate, 0, 0)
 }
 
 // AllocSetOpts2 allocates and configures a SwrContext with AVChannelLayout (FFmpeg 5.1+)
