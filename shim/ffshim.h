@@ -154,6 +154,11 @@ void ffshim_codecctx_set_hw_device_ctx(void *ctx, void *ref);
 void* ffshim_codecctx_hw_frames_ctx(void *ctx);
 void ffshim_codecctx_set_hw_frames_ctx(void *ctx, void *ref);
 
+/* Copies a decoder's subtitle_header (the ASS script header every FFmpeg
+   text decoder emits) to an encoder, NUL-terminated as the ASS code needs
+   (fftools/ffmpeg_enc.c enc_open). */
+int ffshim_codecctx_copy_subtitle_header(void *dst, const void *src);
+
 /* ============================================================================
  * FORMAT FIELD HELPERS (OPTIONAL)
  * ============================================================================ */

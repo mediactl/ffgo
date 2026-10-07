@@ -93,6 +93,8 @@ var (
 	shimCodecCtxHWFramesCtx  func(ctx uintptr) uintptr
 	shimCodecCtxSetHWFrames  func(ctx uintptr, ref uintptr)
 
+	shimCodecCtxCopySubtitleHeader func(dst, src uintptr) int32
+
 	// AVFormatContext / chapter / program helpers (optional)
 	shimFormatCtxDuration   func(ctx uintptr) int64
 	shimFormatCtxBitRate    func(ctx uintptr) int64
@@ -331,6 +333,7 @@ func registerBindings() {
 	registerOptionalLibFunc(&shimCodecCtxSetHWDevice, libShim, "ffshim_codecctx_set_hw_device_ctx")
 	registerOptionalLibFunc(&shimCodecCtxHWFramesCtx, libShim, "ffshim_codecctx_hw_frames_ctx")
 	registerOptionalLibFunc(&shimCodecCtxSetHWFrames, libShim, "ffshim_codecctx_set_hw_frames_ctx")
+	registerOptionalLibFunc(&shimCodecCtxCopySubtitleHeader, libShim, "ffshim_codecctx_copy_subtitle_header")
 
 	// AVFormatContext / chapter / program helpers (optional)
 	registerOptionalLibFunc(&shimFormatCtxDuration, libShim, "ffshim_formatctx_duration")
@@ -1016,6 +1019,15 @@ func BuiltVersions() (avutil, avcodec, avformat int, ok bool) {
 	var u, c, f int32
 	shimBuiltVersions(&u, &c, &f)
 	return int(u), int(c), int(f), true
+}
+
+// CodecCtxCopySubtitleHeader copies a decoder's subtitle_header to an
+// encoder; it returns the AVERROR code, ENOSYS without the shim.
+func CodecCtxCopySubtitleHeader(dst, src unsafe.Pointer) int32 {
+	if !loaded || shimCodecCtxCopySubtitleHeader == nil {
+		return averrorENOSYS
+	}
+	return shimCodecCtxCopySubtitleHeader(uintptr(dst), uintptr(src))
 }
 
 // APIVersion is the loaded shim's FFSHIM_API_VERSION: 0 without a shim, or

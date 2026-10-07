@@ -58,6 +58,7 @@ var (
 	// Subtitle decoding
 	avcodecDecodeSubtitle2 func(ctx, sub, gotSubPtr, pkt uintptr) int32
 	avsubtitleFree         func(sub uintptr)
+	avcodecEncodeSubtitle  func(ctx, buf uintptr, size int32, sub uintptr) int32
 
 	bindingsRegistered bool
 )
@@ -108,6 +109,7 @@ func registerBindings() {
 	// Subtitle decoding
 	purego.RegisterLibFunc(&avcodecDecodeSubtitle2, lib, "avcodec_decode_subtitle2")
 	purego.RegisterLibFunc(&avsubtitleFree, lib, "avsubtitle_free")
+	registerOptionalLibFunc(&avcodecEncodeSubtitle, lib, "avcodec_encode_subtitle")
 
 	bindingsRegistered = true
 }
@@ -1201,6 +1203,15 @@ func DecodeSubtitle2(ctx Context, sub, pkt unsafe.Pointer) (bool, error) {
 		return false, avutil.NewError(ret, "avcodec_decode_subtitle2")
 	}
 	return gotSub != 0, nil
+}
+
+// EncodeSubtitle is avcodec_encode_subtitle: it encodes sub into buf (size
+// bytes) and returns the bytes written, or a negative AVERROR.
+func EncodeSubtitle(ctx Context, buf unsafe.Pointer, size int, sub unsafe.Pointer) int32 {
+	if avcodecEncodeSubtitle == nil {
+		return -38 // ENOSYS
+	}
+	return avcodecEncodeSubtitle(uintptr(ctx), uintptr(buf), int32(size), uintptr(sub))
 }
 
 // SubtitleFree frees subtitle resources.

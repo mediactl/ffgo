@@ -510,6 +510,21 @@ void ffshim_codecctx_set_hw_frames_ctx(void *ctx, void *ref) {
     ((AVCodecContext*)ctx)->hw_frames_ctx = (AVBufferRef*)ref;
 }
 
+int ffshim_codecctx_copy_subtitle_header(void *dst, const void *src) {
+    AVCodecContext *d = dst;
+    const AVCodecContext *s = src;
+    av_freep(&d->subtitle_header);
+    d->subtitle_header_size = 0;
+    if (!s->subtitle_header)
+        return 0;
+    d->subtitle_header = av_mallocz(s->subtitle_header_size + 1);
+    if (!d->subtitle_header)
+        return AVERROR(ENOMEM);
+    memcpy(d->subtitle_header, s->subtitle_header, s->subtitle_header_size);
+    d->subtitle_header_size = s->subtitle_header_size;
+    return 0;
+}
+
 /* ============================================================================
  * FORMAT FIELD HELPERS (OPTIONAL)
  * ============================================================================ */
