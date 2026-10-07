@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/obinnaokechukwu/ffgo/avutil"
 	"github.com/obinnaokechukwu/ffgo/internal/shim"
 )
 
@@ -147,6 +148,27 @@ var streamInfoChecks = []streamInfoCheck{
 		}
 		return strings.Join([]string{p, tr, sp, rg}, ","), strings.Join(want, ",")
 	}},
+	{"r_frame_rate", func(si *StreamInfo, ff ffprobeStream) (string, string) {
+		want, _ := ff.str("r_frame_rate")
+		return fmt.Sprintf("%d/%d", si.RealFrameRate.Num, si.RealFrameRate.Den), want
+	}},
+	{"start_pts", func(si *StreamInfo, ff ffprobeStream) (string, string) {
+		want, _ := ff.str("start_pts")
+		return tsOrNA(si.StartTime), want
+	}},
+	{"duration_ts", func(si *StreamInfo, ff ffprobeStream) (string, string) {
+		want, _ := ff.str("duration_ts")
+		return tsOrNA(si.Duration), want
+	}},
+}
+
+// tsOrNA is a timestamp as ffprobe prints it: N/A (left out of JSON) for
+// AV_NOPTS_VALUE.
+func tsOrNA(ts int64) string {
+	if ts == avutil.NoPTSValue {
+		return ""
+	}
+	return strconv.FormatInt(ts, 10)
 }
 
 // fixtureFacts pin that the fixtures give each compared field a real value,
@@ -167,6 +189,9 @@ var fixtureFacts = []struct {
 	{"hdr.mkv", 0, "field_order", "progressive"},
 	{"hdr.mkv", 0, "color_space", "bt2020nc"},
 	{"hdr.mkv", 0, "color_range", "tv"},
+	{"hdr.mkv", 0, "r_frame_rate", "24000/1001"},
+	{"avc.mp4", 0, "duration_ts", ""},
+	{"hdr.mkv", 0, "duration_ts", "-"},
 }
 
 func TestStreamInfoReadsWhatFFprobePrints(t *testing.T) {

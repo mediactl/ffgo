@@ -323,6 +323,9 @@ func (d *Decoder) getStreamInfo(streamIdx int) *StreamInfo {
 		codecPar:  codecPar,
 	}
 
+	info.RealFrameRate = NewRational(avformat.GetStreamRFrameRate(stream))
+	info.StartTime = avformat.GetStreamStartTime(stream)
+	info.Duration = avformat.GetStreamDuration(stream)
 	info.Profile = int(avformat.GetCodecParProfile(codecPar))
 	info.Level = int(avformat.GetCodecParLevel(codecPar))
 	info.BitsPerRawSample = int(avformat.GetCodecParBitsPerRawSample(codecPar))

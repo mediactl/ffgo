@@ -481,7 +481,7 @@ type StreamInfo struct {
 	SampleRate int         // Audio only
 	Channels   int         // Audio only
 	TimeBase   Rational
-	Duration   int64 // In time_base units
+	Duration   int64 // in time_base units; AV_NOPTS_VALUE when the container records none
 	BitRate    int64
 
 	// Filled by Decoder.Streams (they need the shim; zero values without it).
@@ -510,6 +510,8 @@ type StreamInfo struct {
 	BitsPerCodedSample int        // codecpar bits_per_coded_sample (16 for pcm_s16le)
 	FieldOrder         FieldOrder // video: codecpar field_order
 	Color              ColorSpec  // video: codecpar's colour description; Names() as ffprobe prints it
+	RealFrameRate      Rational   // r_frame_rate, every stream; 0/0 when unknown
+	StartTime          int64      // first timestamp in time_base units; AV_NOPTS_VALUE when unknown
 
 	// codecPar stores the codec parameters for stream copy operations.
 	codecPar avcodec.Parameters

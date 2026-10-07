@@ -733,7 +733,40 @@ var (
 	offsetStreamMetadata     = layout.Offset("AVStream.metadata", 80)       // AVDictionary *metadata
 	offsetStreamAvgFrameRate = layout.Offset("AVStream.avg_frame_rate", 88) // AVRational avg_frame_rate
 	offsetStreamDiscard      = layout.Offset("AVStream.discard", 68)        // enum AVDiscard discard (7.1 and 9: 68)
+	offsetStreamStartTime    = layout.Offset("AVStream.start_time", 40)     // int64_t start_time
+	offsetStreamDuration     = layout.Offset("AVStream.duration", 48)       // int64_t duration
+	offsetStreamRFrameRate   = layout.Offset("AVStream.r_frame_rate", 216)  // AVRational r_frame_rate (7.1: 216, 9: 204 -- the shim's is used)
 )
+
+// GetStreamRFrameRate is the stream's r_frame_rate: the lowest frame rate
+// that represents every timestamp exactly (ffprobe's r_frame_rate); 0/0
+// when unknown.
+func GetStreamRFrameRate(stream Stream) (num, den int32) {
+	if stream == nil {
+		return 0, 0
+	}
+	num = *(*int32)(unsafe.Pointer(uintptr(stream) + offsetStreamRFrameRate))
+	den = *(*int32)(unsafe.Pointer(uintptr(stream) + offsetStreamRFrameRate + 4))
+	return
+}
+
+// GetStreamStartTime is the stream's first timestamp in its time base, or
+// AV_NOPTS_VALUE.
+func GetStreamStartTime(stream Stream) int64 {
+	if stream == nil {
+		return avutil.NoPTSValue
+	}
+	return *(*int64)(unsafe.Pointer(uintptr(stream) + offsetStreamStartTime))
+}
+
+// GetStreamDuration is the stream's duration in its time base, or
+// AV_NOPTS_VALUE when the container records none (Matroska).
+func GetStreamDuration(stream Stream) int64 {
+	if stream == nil {
+		return avutil.NoPTSValue
+	}
+	return *(*int64)(unsafe.Pointer(uintptr(stream) + offsetStreamDuration))
+}
 
 // AVDiscardAll is AVDISCARD_ALL: the demuxer drops every packet of the stream.
 const AVDiscardAll int32 = 48

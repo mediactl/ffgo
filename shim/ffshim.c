@@ -732,6 +732,7 @@ static const struct ffshim_field ffshim_fields[] = {
     FFSHIM_FIELD(AVStream, index), FFSHIM_FIELD(AVStream, id), FFSHIM_FIELD(AVStream, codecpar),
     FFSHIM_FIELD(AVStream, time_base), FFSHIM_FIELD(AVStream, metadata),
     FFSHIM_FIELD(AVStream, avg_frame_rate), FFSHIM_FIELD(AVStream, discard),
+    FFSHIM_FIELD(AVStream, start_time), FFSHIM_FIELD(AVStream, duration), FFSHIM_FIELD(AVStream, r_frame_rate),
     /* AVChapter, AVProgram */
     FFSHIM_FIELD(AVChapter, id), FFSHIM_FIELD(AVChapter, time_base), FFSHIM_FIELD(AVChapter, start),
     FFSHIM_FIELD(AVChapter, end), FFSHIM_FIELD(AVChapter, metadata),
