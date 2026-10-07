@@ -767,6 +767,22 @@ var (
 	offsetCodecParChannels      = layout.Offset("AVCodecParameters.ch_layout.nb_channels", 148) // ch_layout.nb_channels (int in AVChannelLayout at offset 136 + 12)
 )
 
+// AVCodecParameters fields read for the probe and decode (fork tag
+// v0.0.0-clustarr.13). The Go values are FFmpeg 7.1's, which equal 9's for
+// every field here; the shim's are used whenever it matches the release.
+var (
+	offsetCodecParVideoDelay = layout.Offset("AVCodecParameters.video_delay", 120) // int video_delay
+)
+
+// GetCodecParVideoDelay is a video stream's codecpar video_delay: the
+// decoder's frame reorder depth (ffprobe's has_b_frames).
+func GetCodecParVideoDelay(par avcodec.Parameters) int32 {
+	if par == nil {
+		return 0
+	}
+	return *(*int32)(unsafe.Pointer(uintptr(par) + offsetCodecParVideoDelay))
+}
+
 // GetCodecParType returns the media type from codec parameters.
 func GetCodecParType(par avcodec.Parameters) avutil.MediaType {
 	if par == nil {

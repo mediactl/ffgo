@@ -695,6 +695,7 @@ static const struct ffshim_field ffshim_fields[] = {
     FFSHIM_FIELD(AVCodecParameters, extradata_size), FFSHIM_FIELD(AVCodecParameters, format),
     FFSHIM_FIELD(AVCodecParameters, width), FFSHIM_FIELD(AVCodecParameters, height),
     FFSHIM_FIELD(AVCodecParameters, sample_rate), FFSHIM_FIELD(AVCodecParameters, ch_layout.nb_channels),
+    FFSHIM_FIELD(AVCodecParameters, video_delay),
     /* AVFormatContext */
     FFSHIM_FIELD(AVFormatContext, iformat), FFSHIM_FIELD(AVFormatContext, oformat),
     FFSHIM_FIELD(AVFormatContext, pb), FFSHIM_FIELD(AVFormatContext, nb_streams),

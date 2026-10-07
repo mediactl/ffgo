@@ -491,6 +491,10 @@ type StreamInfo struct {
 	// Codec is the codec's FFmpeg name ("hevc", "dts", "av1"), the same
 	// on every release; CodecName is the decoder's ("libdav1d", "dca").
 	Codec string
+	// VideoDelay is a video stream's codecpar video_delay, the decoder's
+	// reorder depth (ffprobe's has_b_frames). ffmpeg(1) moves an -ss seek
+	// back by 3/23 s when it is positive and Decoder.SeekToPTS is false.
+	VideoDelay int
 
 	// codecPar stores the codec parameters for stream copy operations.
 	codecPar avcodec.Parameters
