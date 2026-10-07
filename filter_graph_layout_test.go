@@ -88,3 +88,55 @@ func TestAnAudioGraphTakesTheFramesOwnLayout(t *testing.T) {
 		t.Fatalf("got %d mono samples at 11025 Hz for 1 s of 5.1(side) audio, want 11025", samples)
 	}
 }
+
+// An audio chain of more than one filter links the buffer source to the
+// chain's first filter and its last filter to the sink. avfilter_graph_parse2
+// names the chain's open inputs (the first filter's) and open outputs (the
+// last filter's); the two were linked the wrong way round, so every chain of
+// two or more filters failed with "avfilter_link failed: -22" (a one-filter
+// chain hid it, its input and output being the same filter's).
+func TestAMultiFilterAudioChainLinksFirstToSourceAndLastToSink(t *testing.T) {
+	requireShim(t)
+	g, err := NewFilterGraph(FilterGraphConfig{
+		SampleRate: 48000, SampleFmt: SampleFormatFLTP, Layout: "stereo",
+		TimeBase: NewRational(1, 48000),
+		Filters:  "atrim=start_sample=24000:end_sample=72000,aformat=sample_fmts=s16:sample_rates=11025:channel_layouts=mono",
+	})
+	if err != nil {
+		t.Fatalf("atrim,aformat: %v", err)
+	}
+	defer g.Close()
+	samples := 0
+	take := func(out []*Frame) {
+		for _, o := range out {
+			w := WrapFrame(*o, MediaTypeAudio)
+			if w.SampleRate() != 11025 || w.SampleFormat() != SampleFormatS16 {
+				t.Errorf("frame at %d Hz, %v: aformat did not run", w.SampleRate(), w.SampleFormat())
+			}
+			samples += w.NumSamples()
+			_ = o.Free()
+		}
+	}
+	// 1024-sample frames of silence until one starting at or after atrim's
+	// end has been pushed: atrim has then ended, and closes the buffer
+	// source, whose next frame would be refused with AVERROR_EOF.
+	for total := 0; total-1024 < 72000; total += 1024 {
+		f := silentFrame(t, 48000, "stereo", 1024)
+		f.SetPTS(int64(total))
+		out, err := g.Filter(&f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		take(out)
+		_ = f.Free()
+	}
+	out, err := g.Flush()
+	if err != nil {
+		t.Fatal(err)
+	}
+	take(out)
+	// atrim keeps 1 s of the 2 (samples 24000-72000), resampled to 11025 Hz.
+	if samples < 11025-32 || samples > 11025+32 {
+		t.Fatalf("got %d samples at 11025 Hz, want about 11025: atrim did not keep 1 s", samples)
+	}
+}

@@ -423,11 +423,17 @@ func (g *FilterGraph) setupAudioFilters(cfg FilterGraphConfig) error {
 			return fmt.Errorf("ffgo: failed to parse filter graph: %w", err)
 		}
 
+		// avfilter_graph_parse2's inputs are the chain's open input pads
+		// (its first filter's) and its outputs the open output pads (its
+		// last filter's). A one-filter chain's are the same filter's, which
+		// is how linking them the other way round went unnoticed until a
+		// chain of two filters failed with avfilter_link's -22.
+
 		// Link src -> first filter
-		if outputs != nil {
-			outputCtx := avfilter.InOutGetFilterCtx(outputs)
-			outputPad := avfilter.InOutGetPadIdx(outputs)
-			if err := avfilter.Link(g.bufferSrc, 0, outputCtx, uint32(outputPad)); err != nil {
+		if inputs != nil {
+			inputCtx := avfilter.InOutGetFilterCtx(inputs)
+			inputPad := avfilter.InOutGetPadIdx(inputs)
+			if err := avfilter.Link(g.bufferSrc, 0, inputCtx, uint32(inputPad)); err != nil {
 				avfilter.InOutFree(&inputs)
 				avfilter.InOutFree(&outputs)
 				return fmt.Errorf("ffgo: failed to link abuffer: %w", err)
@@ -435,10 +441,10 @@ func (g *FilterGraph) setupAudioFilters(cfg FilterGraphConfig) error {
 		}
 
 		// Link last filter -> sink
-		if inputs != nil {
-			inputCtx := avfilter.InOutGetFilterCtx(inputs)
-			inputPad := avfilter.InOutGetPadIdx(inputs)
-			if err := avfilter.Link(inputCtx, uint32(inputPad), g.bufferSink, 0); err != nil {
+		if outputs != nil {
+			outputCtx := avfilter.InOutGetFilterCtx(outputs)
+			outputPad := avfilter.InOutGetPadIdx(outputs)
+			if err := avfilter.Link(outputCtx, uint32(outputPad), g.bufferSink, 0); err != nil {
 				avfilter.InOutFree(&inputs)
 				avfilter.InOutFree(&outputs)
 				return fmt.Errorf("ffgo: failed to link abuffersink: %w", err)
