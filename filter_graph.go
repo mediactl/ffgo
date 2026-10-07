@@ -5,6 +5,7 @@ package ffgo
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"runtime"
 	"strings"
 	"unsafe"
@@ -36,7 +37,7 @@ type FilterGraphConfig struct {
 	Width     int
 	Height    int
 	PixelFmt  PixelFormat
-	TimeBase  Rational // defaults to 1/90000
+	TimeBase  Rational // video: defaults to 1/90000; audio: sent to abuffer when set
 	FrameRate Rational // optional
 	SAR       Rational // sample aspect ratio, defaults to 1/1
 
@@ -45,6 +46,12 @@ type FilterGraphConfig struct {
 	Channels      int
 	ChannelLayout ChannelLayout
 	SampleFmt     SampleFormat
+	// Layout is the input's channel layout as FFmpeg describes it
+	// (Frame.ChannelLayout: "5.1(side)", "stereo", or "3 channels" for an
+	// unspecified order, which goes to abuffer as channels=3), as ffmpeg(1)
+	// configures its abuffer. It wins over Channels, and SampleRate with
+	// Layout alone marks an audio graph.
+	Layout string
 
 	// Filter string (e.g., "scale=320:240,transpose=1")
 	Filters string
@@ -91,10 +98,10 @@ func NewFilterGraph(cfg FilterGraphConfig) (*FilterGraph, error) {
 
 	// Determine if this is video or audio based on config
 	isVideo := cfg.Width > 0 && cfg.Height > 0
-	isAudio := cfg.SampleRate > 0 && cfg.Channels > 0
+	isAudio := cfg.SampleRate > 0 && (cfg.Channels > 0 || cfg.Layout != "")
 
 	if !isVideo && !isAudio {
-		return nil, errors.New("ffgo: must specify either video (Width, Height) or audio (SampleRate, Channels) parameters")
+		return nil, errors.New("ffgo: must specify either video (Width, Height) or audio (SampleRate with Channels or Layout) parameters")
 	}
 
 	if isVideo && isAudio {
@@ -365,24 +372,7 @@ func (g *FilterGraph) setupAudioFilters(cfg FilterGraphConfig) error {
 		return errors.New("ffgo: abuffer filter not found")
 	}
 
-	// Get channel layout string
-	layoutStr := "stereo"
-	switch cfg.Channels {
-	case 1:
-		layoutStr = "mono"
-	case 2:
-		layoutStr = "stereo"
-	case 6:
-		layoutStr = "5.1"
-	case 8:
-		layoutStr = "7.1"
-	}
-
-	// Note: sample_fmt format string uses name like "fltp", "s16", etc.
-	sampleFmtName := getSampleFormatName(cfg.SampleFmt)
-
-	srcArgs := fmt.Sprintf("sample_rate=%d:sample_fmt=%s:channel_layout=%s",
-		cfg.SampleRate, sampleFmtName, layoutStr)
+	srcArgs := audioBufferArgs(cfg)
 
 	var err error
 	g.bufferSrc, err = avfilter.GraphCreateFilter(g.graph, abufferSrc, "in", srcArgs)
@@ -445,6 +435,43 @@ func (g *FilterGraph) setupAudioFilters(cfg FilterGraphConfig) error {
 	}
 
 	return nil
+}
+
+var unspecifiedLayout = regexp.MustCompile(`^([0-9]+) channels$`)
+
+// audioBufferArgs is abuffer's argument string, as fftools/ffmpeg_filter.c
+// configure_input_audio_filter writes it: time_base when known, then the
+// rate and format, then the layout -- channel_layout=<describe> for a known
+// order, channels=N for an unspecified one.
+func audioBufferArgs(cfg FilterGraphConfig) string {
+	var b strings.Builder
+	if cfg.TimeBase.Num != 0 && cfg.TimeBase.Den != 0 {
+		fmt.Fprintf(&b, "time_base=%d/%d:", cfg.TimeBase.Num, cfg.TimeBase.Den)
+	}
+	fmt.Fprintf(&b, "sample_rate=%d:sample_fmt=%s:", cfg.SampleRate, getSampleFormatName(cfg.SampleFmt))
+	switch m := unspecifiedLayout.FindStringSubmatch(cfg.Layout); {
+	case m != nil:
+		b.WriteString("channels=" + m[1])
+	case cfg.Layout != "":
+		b.WriteString("channel_layout=" + cfg.Layout)
+	default:
+		b.WriteString("channel_layout=" + layoutForChannels(cfg.Channels))
+	}
+	return b.String()
+}
+
+// layoutForChannels is the layout ffgo always gave a bare channel count.
+func layoutForChannels(n int) string {
+	switch n {
+	case 1:
+		return "mono"
+	case 6:
+		return "5.1"
+	case 8:
+		return "7.1"
+	default:
+		return "stereo"
+	}
 }
 
 func getSampleFormatName(fmt SampleFormat) string {
