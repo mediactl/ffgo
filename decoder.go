@@ -4,6 +4,7 @@ package ffgo
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -36,6 +37,7 @@ type Decoder struct {
 	customIO         *CustomIOContext
 	cleanup          func()
 	closed           bool
+	discarding       bool // Discard ran: ReadPacket skips discarded streams' packets
 }
 
 // DecoderOptions configures decoder behavior.
@@ -422,6 +424,34 @@ func (d *Decoder) SeekToPTS() bool {
 	return avformat.GetInputFormatFlags(avformat.GetInputFormat(d.formatCtx))&avformat.AVFMT_SEEK_TO_PTS != 0
 }
 
+// Discard makes the demuxer drop every stream's packets except keep's
+// (AVStream.discard = AVDISCARD_ALL), as ffmpeg(1) does for the streams no
+// output reads; ReadPacket also drops the ones the demuxer had already
+// buffered. ffmpeg(1) discards only after its -ss seek, so the seek's
+// default-stream choice sees every stream: call Discard after seeking.
+func (d *Decoder) Discard(keep ...int) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.closed || d.formatCtx == nil {
+		return ErrClosed
+	}
+	n := avformat.GetNumStreams(d.formatCtx)
+	kept := make(map[int]bool, len(keep))
+	for _, k := range keep {
+		if k < 0 || k >= n {
+			return fmt.Errorf("ffgo: no stream %d", k)
+		}
+		kept[k] = true
+	}
+	for i := 0; i < n; i++ {
+		if !kept[i] {
+			avformat.SetStreamDiscard(avformat.GetStream(d.formatCtx, i), avformat.AVDiscardAll)
+		}
+	}
+	d.discarding = true
+	return nil
+}
+
 // DurationTime is an alias for Duration for backward compatibility.
 // Deprecated: Use Duration() instead.
 func (d *Decoder) DurationTime() time.Duration {
@@ -451,18 +481,28 @@ func (d *Decoder) ReadPacket() (*Packet, error) {
 		return nil, errors.New("ffgo: decoder is closed")
 	}
 
-	// Unref previous packet
-	avcodec.PacketUnref(d.packet)
+	for {
+		// Unref previous packet
+		avcodec.PacketUnref(d.packet)
 
-	// Read next packet
-	if err := avformat.ReadFrame(d.formatCtx, d.packet); err != nil {
-		if avutil.IsEOF(err) {
-			return nil, nil
+		// Read next packet
+		if err := avformat.ReadFrame(d.formatCtx, d.packet); err != nil {
+			if avutil.IsEOF(err) {
+				return nil, nil
+			}
+			return nil, err
 		}
-		return nil, err
+		// A discarded stream's packets the demuxer buffered before Discard
+		// (avformat_find_stream_info reads ahead) still come out of
+		// av_read_frame; ffmpeg(1) drops them too.
+		if d.discarding {
+			st := avformat.GetStream(d.formatCtx, int(avcodec.GetPacketStreamIndex(d.packet)))
+			if st != nil && avformat.GetStreamDiscard(st) >= avformat.AVDiscardAll {
+				continue
+			}
+		}
+		return &Packet{ptr: d.packet, owned: false}, nil
 	}
-
-	return &Packet{ptr: d.packet, owned: false}, nil
 }
 
 // OpenVideoDecoder opens a codec context for video decoding.

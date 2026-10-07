@@ -732,7 +732,27 @@ var (
 	offsetStreamTimeBase     = layout.Offset("AVStream.time_base", 32)      // AVRational time_base
 	offsetStreamMetadata     = layout.Offset("AVStream.metadata", 80)       // AVDictionary *metadata
 	offsetStreamAvgFrameRate = layout.Offset("AVStream.avg_frame_rate", 88) // AVRational avg_frame_rate
+	offsetStreamDiscard      = layout.Offset("AVStream.discard", 68)        // enum AVDiscard discard (7.1 and 9: 68)
 )
+
+// AVDiscardAll is AVDISCARD_ALL: the demuxer drops every packet of the stream.
+const AVDiscardAll int32 = 48
+
+// GetStreamDiscard is an AVStream's discard level (AVDISCARD_*).
+func GetStreamDiscard(stream Stream) int32 {
+	if stream == nil {
+		return 0
+	}
+	return *(*int32)(unsafe.Pointer(uintptr(stream) + offsetStreamDiscard))
+}
+
+// SetStreamDiscard sets an AVStream's discard level.
+func SetStreamDiscard(stream Stream, v int32) {
+	if stream == nil {
+		return
+	}
+	*(*int32)(unsafe.Pointer(uintptr(stream) + offsetStreamDiscard)) = v
+}
 
 // GetStreamIndex returns the stream index.
 func GetStreamIndex(stream Stream) int32 {

@@ -710,7 +710,7 @@ static const struct ffshim_field ffshim_fields[] = {
     /* AVStream */
     FFSHIM_FIELD(AVStream, index), FFSHIM_FIELD(AVStream, id), FFSHIM_FIELD(AVStream, codecpar),
     FFSHIM_FIELD(AVStream, time_base), FFSHIM_FIELD(AVStream, metadata),
-    FFSHIM_FIELD(AVStream, avg_frame_rate),
+    FFSHIM_FIELD(AVStream, avg_frame_rate), FFSHIM_FIELD(AVStream, discard),
     /* AVChapter, AVProgram */
     FFSHIM_FIELD(AVChapter, id), FFSHIM_FIELD(AVChapter, time_base), FFSHIM_FIELD(AVChapter, start),
     FFSHIM_FIELD(AVChapter, end), FFSHIM_FIELD(AVChapter, metadata),
@@ -807,6 +807,7 @@ static const struct ffshim_enum ffshim_enums[] = {
     FFSHIM_ENUM(AV_DISPOSITION_ATTACHED_PIC), FFSHIM_ENUM(AV_DISPOSITION_CAPTIONS),
     FFSHIM_ENUM(AV_DISPOSITION_DESCRIPTIONS), FFSHIM_ENUM(AV_DISPOSITION_METADATA),
     FFSHIM_ENUM(AVFMT_SEEK_TO_PTS),
+    FFSHIM_ENUM(AVDISCARD_ALL),
     FFSHIM_ENUM(AV_FRAME_DATA_MASTERING_DISPLAY_METADATA),
     FFSHIM_ENUM(AV_FRAME_DATA_CONTENT_LIGHT_LEVEL),
     FFSHIM_ENUM(AV_FRAME_DATA_DYNAMIC_HDR_PLUS),
