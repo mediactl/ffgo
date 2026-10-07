@@ -40,6 +40,12 @@ type FilterGraphConfig struct {
 	TimeBase  Rational // video: defaults to 1/90000; audio: sent to abuffer when set
 	FrameRate Rational // optional
 	SAR       Rational // sample aspect ratio, defaults to 1/1
+	// ColorSpace and ColorRange are the input frames' (Frame.ColorSpec), given
+	// to the buffer source as ffmpeg(1) gives the first frame's, so scale's
+	// YUV-to-RGB matrix and range are the input's. Both zero sends neither:
+	// ColorSpace 0 is AVCOL_SPC_RGB, and the buffer's default is unspecified.
+	ColorSpace ColorSpace
+	ColorRange ColorRange
 
 	// Audio parameters (required for audio filters)
 	SampleRate    int
@@ -145,28 +151,13 @@ func NewFilterGraph(cfg FilterGraphConfig) (*FilterGraph, error) {
 }
 
 func (g *FilterGraph) setupVideoFilters(cfg FilterGraphConfig) error {
-	// Default time base
-	timeBase := cfg.TimeBase
-	if timeBase.Num == 0 {
-		timeBase = Rational{Num: 1, Den: 90000}
-	}
-
-	// Default SAR
-	sar := cfg.SAR
-	if sar.Num == 0 {
-		sar = Rational{Num: 1, Den: 1}
-	}
-
 	// Create buffersrc
 	bufferSrc := avfilter.GetByName("buffer")
 	if bufferSrc == nil {
 		return errors.New("ffgo: buffer filter not found")
 	}
 
-	srcArgs := fmt.Sprintf("video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
-		cfg.Width, cfg.Height, int(cfg.PixelFmt),
-		timeBase.Num, timeBase.Den,
-		sar.Num, sar.Den)
+	srcArgs := videoBufferArgs(cfg)
 
 	var err error
 	if cfg.HWFramesCtx != nil {
@@ -221,6 +212,24 @@ func (g *FilterGraph) setupVideoFilters(cfg FilterGraphConfig) error {
 	}
 
 	return nil
+}
+
+// videoBufferArgs is the buffer source's argument string.
+func videoBufferArgs(cfg FilterGraphConfig) string {
+	tb := cfg.TimeBase
+	if tb.Num == 0 {
+		tb = Rational{Num: 1, Den: 90000}
+	}
+	sar := cfg.SAR
+	if sar.Num == 0 {
+		sar = Rational{Num: 1, Den: 1}
+	}
+	args := fmt.Sprintf("video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
+		cfg.Width, cfg.Height, int(cfg.PixelFmt), tb.Num, tb.Den, sar.Num, sar.Den)
+	if cfg.ColorSpace != 0 || cfg.ColorRange != 0 {
+		args += fmt.Sprintf(":colorspace=%d:range=%d", int(cfg.ColorSpace), int(cfg.ColorRange))
+	}
+	return args
 }
 
 // linkFilterChain parses a filter string and creates/links filters manually.
