@@ -4,6 +4,8 @@ package ffgo
 
 import (
 	"errors"
+	"math"
+	"math/big"
 	"time"
 	"unsafe"
 
@@ -19,6 +21,12 @@ type Chapter struct {
 	End      time.Duration // End time
 	Title    string        // Chapter title (from metadata)
 	Metadata Metadata      // Full chapter metadata
+
+	// TimeBase, StartTS and EndTS are the chapter's own timestamps as the
+	// container stores them (Matroska: 1/1000000000), which ffprobe prints.
+	TimeBase Rational
+	StartTS  int64
+	EndTS    int64
 }
 
 // GetChapters returns all chapters from the media file.
@@ -49,13 +57,9 @@ func (d *Decoder) GetChapters() []Chapter {
 			tbDen = 1
 		}
 
-		// Convert start and end to time.Duration
+		tb := NewRational(tbNum, tbDen)
 		startPTS := avformat.GetChapterStart(ch)
 		endPTS := avformat.GetChapterEnd(ch)
-
-		// Convert to microseconds: pts * num / den * 1000000
-		startUS := startPTS * int64(tbNum) * 1000000 / int64(tbDen)
-		endUS := endPTS * int64(tbNum) * 1000000 / int64(tbDen)
 
 		// Get metadata
 		meta := getChapterMetadata(ch)
@@ -68,14 +72,34 @@ func (d *Decoder) GetChapters() []Chapter {
 
 		chapters = append(chapters, Chapter{
 			ID:       avformat.GetChapterID(ch),
-			Start:    time.Duration(startUS) * time.Microsecond,
-			End:      time.Duration(endUS) * time.Microsecond,
+			Start:    tsDuration(startPTS, tb),
+			End:      tsDuration(endPTS, tb),
 			Title:    title,
 			Metadata: meta,
+			TimeBase: tb,
+			StartTS:  startPTS,
+			EndTS:    endPTS,
 		})
 	}
 
 	return chapters
+}
+
+// tsDuration is ts in time base tb as a Duration, truncated to the
+// microsecond as GetChapters always did. It is computed in big integers:
+// ts*num*1000000 overflows int64 for a Matroska chapter past 2h33m43s.
+func tsDuration(ts int64, tb Rational) time.Duration {
+	us := new(big.Int).Mul(big.NewInt(ts), big.NewInt(int64(tb.Num)*1000000))
+	us.Quo(us, big.NewInt(int64(tb.Den)))
+	ns := us.Mul(us, big.NewInt(int64(time.Microsecond)))
+	switch {
+	case ns.IsInt64():
+		return time.Duration(ns.Int64())
+	case ns.Sign() < 0:
+		return math.MinInt64
+	default:
+		return math.MaxInt64
+	}
 }
 
 // getChapterMetadata extracts metadata from a chapter as a Metadata map.
