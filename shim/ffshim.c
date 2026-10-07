@@ -717,6 +717,7 @@ static const struct ffshim_field ffshim_fields[] = {
     FFSHIM_FIELD(AVCodecParameters, field_order),
     FFSHIM_FIELD(AVCodecParameters, color_range), FFSHIM_FIELD(AVCodecParameters, color_primaries),
     FFSHIM_FIELD(AVCodecParameters, color_trc), FFSHIM_FIELD(AVCodecParameters, color_space),
+    FFSHIM_FIELD(AVCodecParameters, ch_layout.order),
     /* AVFormatContext */
     FFSHIM_FIELD(AVFormatContext, iformat), FFSHIM_FIELD(AVFormatContext, oformat),
     FFSHIM_FIELD(AVFormatContext, pb), FFSHIM_FIELD(AVFormatContext, nb_streams),
@@ -835,6 +836,8 @@ static const struct ffshim_enum ffshim_enums[] = {
 #endif
     FFSHIM_ENUM(AV_FIELD_UNKNOWN), FFSHIM_ENUM(AV_FIELD_PROGRESSIVE), FFSHIM_ENUM(AV_FIELD_TT),
     FFSHIM_ENUM(AV_FIELD_BB), FFSHIM_ENUM(AV_FIELD_TB), FFSHIM_ENUM(AV_FIELD_BT),
+    FFSHIM_ENUM(AV_CHANNEL_ORDER_UNSPEC), FFSHIM_ENUM(AV_CHANNEL_ORDER_NATIVE),
+    FFSHIM_ENUM(AV_CHANNEL_ORDER_CUSTOM), FFSHIM_ENUM(AV_CHANNEL_ORDER_AMBISONIC),
     FFSHIM_ENUM(AV_FRAME_DATA_MASTERING_DISPLAY_METADATA),
     FFSHIM_ENUM(AV_FRAME_DATA_CONTENT_LIGHT_LEVEL),
     FFSHIM_ENUM(AV_FRAME_DATA_DYNAMIC_HDR_PLUS),

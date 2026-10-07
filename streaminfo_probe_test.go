@@ -160,6 +160,16 @@ var streamInfoChecks = []streamInfoCheck{
 		want, _ := ff.str("duration_ts")
 		return tsOrNA(si.Duration), want
 	}},
+	{"channel_layout", func(si *StreamInfo, ff ffprobeStream) (string, string) {
+		if si.Type != MediaTypeAudio {
+			return "", ""
+		}
+		want, _ := ff.str("channel_layout")
+		if si.ChannelOrder == ChannelOrderUnspec {
+			return "", want
+		}
+		return si.ChannelLayout, want
+	}},
 }
 
 // tsOrNA is a timestamp as ffprobe prints it: N/A (left out of JSON) for
@@ -192,6 +202,8 @@ var fixtureFacts = []struct {
 	{"hdr.mkv", 0, "r_frame_rate", "24000/1001"},
 	{"avc.mp4", 0, "duration_ts", ""},
 	{"hdr.mkv", 0, "duration_ts", "-"},
+	{"hdr.mkv", 1, "channel_layout", "5.1(side)"},
+	{"hdr.mkv", 2, "channel_layout", "-"},
 }
 
 func TestStreamInfoReadsWhatFFprobePrints(t *testing.T) {
@@ -247,6 +259,18 @@ func TestFieldOrderMatchesTheHeaders(t *testing.T) {
 		"AV_FIELD_TT": FieldOrderTT, "AV_FIELD_BB": FieldOrderBB, "AV_FIELD_TB": FieldOrderTB, "AV_FIELD_BT": FieldOrderBT,
 	} {
 		if got, ok := shim.EnumValue(name); !ok || FieldOrder(got) != v {
+			t.Errorf("%s: headers %d (known %v), ffgo %d", name, got, ok, v)
+		}
+	}
+}
+
+func TestChannelOrderMatchesTheHeaders(t *testing.T) {
+	requireShim(t)
+	for name, v := range map[string]ChannelOrder{
+		"AV_CHANNEL_ORDER_UNSPEC": ChannelOrderUnspec, "AV_CHANNEL_ORDER_NATIVE": ChannelOrderNative,
+		"AV_CHANNEL_ORDER_CUSTOM": ChannelOrderCustom, "AV_CHANNEL_ORDER_AMBISONIC": ChannelOrderAmbisonic,
+	} {
+		if got, ok := shim.EnumValue(name); !ok || ChannelOrder(got) != v {
 			t.Errorf("%s: headers %d (known %v), ffgo %d", name, got, ok, v)
 		}
 	}

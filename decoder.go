@@ -346,6 +346,7 @@ func (d *Decoder) getStreamInfo(streamIdx int) *StreamInfo {
 	} else if codecType == avutil.MediaTypeAudio {
 		info.SampleRate = int(avformat.GetCodecParSampleRate(codecPar))
 		info.Channels = int(avformat.GetCodecParChannels(codecPar))
+		info.ChannelOrder = ChannelOrder(avformat.GetCodecParChannelOrder(codecPar))
 	}
 
 	return info

@@ -47,3 +47,13 @@ func (f FieldOrder) String() string {
 	}
 	return ""
 }
+
+// ChannelOrder is an audio stream's AVChannelOrder.
+type ChannelOrder int32
+
+const (
+	ChannelOrderUnspec    ChannelOrder = 0 // AV_CHANNEL_ORDER_UNSPEC: a channel count, no positions
+	ChannelOrderNative    ChannelOrder = 1 // AV_CHANNEL_ORDER_NATIVE: a layout mask
+	ChannelOrderCustom    ChannelOrder = 2 // AV_CHANNEL_ORDER_CUSTOM
+	ChannelOrderAmbisonic ChannelOrder = 3 // AV_CHANNEL_ORDER_AMBISONIC
+)

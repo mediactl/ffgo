@@ -835,7 +835,17 @@ var (
 	offsetCodecParColorPrimaries     = layout.Offset("AVCodecParameters.color_primaries", 104)      // enum AVColorPrimaries color_primaries
 	offsetCodecParColorTrc           = layout.Offset("AVCodecParameters.color_trc", 108)            // enum AVColorTransferCharacteristic color_trc
 	offsetCodecParColorSpace         = layout.Offset("AVCodecParameters.color_space", 112)          // enum AVColorSpace color_space
+	offsetCodecParChannelOrder       = layout.Offset("AVCodecParameters.ch_layout.order", 128)      // enum AVChannelOrder ch_layout.order
 )
+
+// GetCodecParChannelOrder is an audio stream's codecpar ch_layout.order
+// (AV_CHANNEL_ORDER_*).
+func GetCodecParChannelOrder(par avcodec.Parameters) int32 {
+	if par == nil {
+		return 0
+	}
+	return *(*int32)(unsafe.Pointer(uintptr(par) + offsetCodecParChannelOrder))
+}
 
 // GetCodecParColor is codecpar's colour description: range, primaries,
 // transfer characteristic and matrix (AVColor* codes).
