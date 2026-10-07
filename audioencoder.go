@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sort"
 	"sync"
 	"unsafe"
 
@@ -32,6 +33,9 @@ type AudioEncoderConfig2 struct {
 	// 1/SampleRate. Only the first frame's PTS is read: output timestamps
 	// start there and advance by samples, so there are no gaps or overlaps.
 	InputTimeBase Rational
+	// Options are the encoder's AVOptions ("center_mixlev" for ac3), set
+	// before it opens. An option the encoder does not have is an error.
+	Options map[string]string
 }
 
 // AudioEncoder encodes audio frames of any size into packets. An audio
@@ -96,6 +100,16 @@ func NewAudioEncoder(cfg AudioEncoderConfig2) (*AudioEncoder, error) {
 	avcodec.SetCtxTimeBase(ctx, 1, int32(cfg.SampleRate))
 	if cfg.GlobalHeader {
 		avcodec.SetCtxFlags(ctx, avcodec.GetCtxFlags(ctx)|avcodec.CodecFlagGlobalHeader)
+	}
+	keys := make([]string, 0, len(cfg.Options))
+	for k := range cfg.Options {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		if err := avutil.OptSet(unsafe.Pointer(ctx), k, cfg.Options[k], avutil.AV_OPT_SEARCH_CHILDREN); err != nil {
+			return fail(fmt.Errorf("ffgo: %s option %s=%s: %w", cfg.EncoderName, k, cfg.Options[k], err))
+		}
 	}
 	if err := avcodec.Open2(ctx, codec, nil); err != nil {
 		return fail(fmt.Errorf("ffgo: open %s: %w", cfg.EncoderName, err))
