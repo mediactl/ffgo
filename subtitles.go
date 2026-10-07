@@ -4,6 +4,7 @@ package ffgo
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 	"unsafe"
@@ -108,6 +109,15 @@ func NewSubtitleDecoder(stream *StreamInfo) (*SubtitleDecoder, error) {
 	if err := avcodec.ParametersToContext(codecCtx, codecPar); err != nil {
 		avcodec.FreeContext(&codecCtx)
 		return nil, err
+	}
+
+	// pkt_timebase lets the decoder fill AVSubtitle.pts and end_display_time
+	// from the packet (libavcodec/decode.c), as StreamDecoder already does.
+	if tb := stream.TimeBase; tb.Num > 0 && tb.Den > 0 {
+		if err := avutil.OptSet(unsafe.Pointer(codecCtx), "pkt_timebase", fmt.Sprintf("%d/%d", tb.Num, tb.Den), 0); err != nil {
+			avcodec.FreeContext(&codecCtx)
+			return nil, fmt.Errorf("ffgo: pkt_timebase: %w", err)
+		}
 	}
 
 	// Open decoder
