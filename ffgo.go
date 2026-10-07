@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
+	"unsafe"
 
 	"github.com/obinnaokechukwu/ffgo/avcodec"
 	"github.com/obinnaokechukwu/ffgo/avformat"
@@ -281,6 +282,36 @@ func (p *Packet) Pos() int64 {
 		return -1
 	}
 	return avcodec.GetPacketPos(p.ptr)
+}
+
+// NewPacketFromData is an owned packet holding a copy of data, with no
+// timestamps: the caller sets them through avcodec.SetPacketPTS and friends.
+func NewPacketFromData(data []byte) (*Packet, error) {
+	pkt := avcodec.PacketAlloc()
+	if pkt == nil {
+		return nil, errors.New("ffgo: NewPacketFromData: allocate packet")
+	}
+	if err := avcodec.NewPacket(pkt, len(data)); err != nil {
+		avcodec.PacketFree(&pkt)
+		return nil, err
+	}
+	if len(data) > 0 {
+		copy(unsafe.Slice((*byte)(avcodec.GetPacketData(pkt)), len(data)), data)
+	}
+	return &Packet{ptr: pkt, owned: true}, nil
+}
+
+// Data is a copy of the packet's payload.
+func (p *Packet) Data() []byte {
+	if p == nil || p.ptr == nil {
+		return nil
+	}
+	n := avcodec.GetPacketSize(p.ptr)
+	d := avcodec.GetPacketData(p.ptr)
+	if n <= 0 || d == nil {
+		return nil
+	}
+	return append([]byte(nil), unsafe.Slice((*byte)(d), n)...)
 }
 
 // PacketAlloc allocates a new owned packet.

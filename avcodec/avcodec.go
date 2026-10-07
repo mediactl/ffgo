@@ -5,6 +5,7 @@
 package avcodec
 
 import (
+	"errors"
 	"github.com/obinnaokechukwu/ffgo/internal/layout"
 	"runtime"
 	"unsafe"
@@ -52,6 +53,7 @@ var (
 	avPacketFree  func(pkt *unsafe.Pointer)
 	avPacketRef   func(dst, src uintptr) int32
 	avPacketUnref func(pkt uintptr)
+	avNewPacket   func(pkt uintptr, size int32) int32
 
 	// Subtitle decoding
 	avcodecDecodeSubtitle2 func(ctx, sub, gotSubPtr, pkt uintptr) int32
@@ -101,6 +103,7 @@ func registerBindings() {
 	purego.RegisterLibFunc(&avPacketFree, lib, "av_packet_free")
 	purego.RegisterLibFunc(&avPacketRef, lib, "av_packet_ref")
 	purego.RegisterLibFunc(&avPacketUnref, lib, "av_packet_unref")
+	purego.RegisterLibFunc(&avNewPacket, lib, "av_new_packet")
 
 	// Subtitle decoding
 	purego.RegisterLibFunc(&avcodecDecodeSubtitle2, lib, "avcodec_decode_subtitle2")
@@ -399,6 +402,80 @@ func GetCodecParTag(par Parameters) uint32 {
 		return 0
 	}
 	return *(*uint32)(unsafe.Pointer(uintptr(par) + offsetCodecParTag))
+}
+
+var (
+	offsetCodecParCodecID       = layout.Offset("AVCodecParameters.codec_id", 4)
+	offsetCodecParExtradata     = layout.Offset("AVCodecParameters.extradata", 16)
+	offsetCodecParExtradataSize = layout.Offset("AVCodecParameters.extradata_size", 24)
+)
+
+// SetCodecParCodecID sets the codec id in codec parameters.
+func SetCodecParCodecID(par Parameters, id CodecID) {
+	if par == nil {
+		return
+	}
+	*(*int32)(unsafe.Pointer(uintptr(par) + offsetCodecParCodecID)) = int32(id)
+}
+
+// GetCodecParCodecID gets the codec id from codec parameters.
+func GetCodecParCodecID(par Parameters) CodecID {
+	if par == nil {
+		return 0
+	}
+	return CodecID(*(*int32)(unsafe.Pointer(uintptr(par) + offsetCodecParCodecID)))
+}
+
+// inputBufferPadding is AV_INPUT_BUFFER_PADDING_SIZE: the zeroed bytes
+// FFmpeg requires past the end of extradata.
+const inputBufferPadding = 64
+
+// SetCodecParExtradata replaces par's extradata with a zero-padded copy of
+// b in av_malloc'd memory, which avcodec_parameters_free releases with par.
+func SetCodecParExtradata(par Parameters, b []byte) error {
+	if par == nil {
+		return errors.New("avcodec: SetCodecParExtradata: nil parameters")
+	}
+	ptr := (*unsafe.Pointer)(unsafe.Pointer(uintptr(par) + offsetCodecParExtradata))
+	size := (*int32)(unsafe.Pointer(uintptr(par) + offsetCodecParExtradataSize))
+	if *ptr != nil {
+		avutil.Free(*ptr)
+		*ptr, *size = nil, 0
+	}
+	n := len(b) + inputBufferPadding
+	buf := avutil.Malloc(uintptr(n))
+	if buf == nil {
+		return errors.New("avcodec: SetCodecParExtradata: allocate")
+	}
+	dst := unsafe.Slice((*byte)(buf), n)
+	copy(dst, b)
+	clear(dst[len(b):])
+	*ptr, *size = buf, int32(len(b))
+	return nil
+}
+
+// GetCodecParExtradata is a copy of par's extradata.
+func GetCodecParExtradata(par Parameters) []byte {
+	if par == nil {
+		return nil
+	}
+	ptr := *(*unsafe.Pointer)(unsafe.Pointer(uintptr(par) + offsetCodecParExtradata))
+	n := *(*int32)(unsafe.Pointer(uintptr(par) + offsetCodecParExtradataSize))
+	if ptr == nil || n <= 0 {
+		return nil
+	}
+	return append([]byte(nil), unsafe.Slice((*byte)(ptr), n)...)
+}
+
+// NewPacket gives pkt a zero-padded payload of size bytes (av_new_packet).
+func NewPacket(pkt Packet, size int) error {
+	if avNewPacket == nil {
+		return errors.New("avcodec: av_new_packet not loaded")
+	}
+	if ret := avNewPacket(uintptr(pkt), int32(size)); ret < 0 {
+		return avutil.NewError(ret, "av_new_packet")
+	}
+	return nil
 }
 
 // PacketAlloc allocates a packet.
