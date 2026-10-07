@@ -409,6 +409,18 @@ func (d *Decoder) StartTime() time.Duration {
 	return time.Duration(us) * time.Microsecond
 }
 
+// SeekToPTS reports whether the input's demuxer seeks by presentation
+// timestamps (AVFMT_SEEK_TO_PTS: mov/mp4 yes, Matroska no). ffmpeg(1) moves
+// an -ss seek back by 3/23 s when it is false and a stream has a VideoDelay.
+func (d *Decoder) SeekToPTS() bool {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.closed || d.formatCtx == nil {
+		return false
+	}
+	return avformat.GetInputFormatFlags(avformat.GetInputFormat(d.formatCtx))&avformat.AVFMT_SEEK_TO_PTS != 0
+}
+
 // DurationTime is an alias for Duration for backward compatibility.
 // Deprecated: Use Duration() instead.
 func (d *Decoder) DurationTime() time.Duration {

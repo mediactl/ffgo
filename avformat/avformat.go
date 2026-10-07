@@ -583,6 +583,7 @@ const ()
 var (
 	offsetInputFormatName     = layout.Offset("AVInputFormat.name", 0)      // const char *name
 	offsetInputFormatLongName = layout.Offset("AVInputFormat.long_name", 8) // const char *long_name
+	offsetInputFormatFlags    = layout.Offset("AVInputFormat.flags", 16)    // int flags (FFmpeg 7.1 and 9: 16)
 )
 
 // GetInputFormat returns the input format (demuxer) selected for the context.
@@ -947,6 +948,17 @@ const (
 	AVFMT_NOFILE       = 0x0001 // No file, can be custom I/O
 	AVFMT_GLOBALHEADER = 0x0040 // Format wants global header
 )
+
+// AVFMT_SEEK_TO_PTS: the demuxer seeks by presentation time.
+const AVFMT_SEEK_TO_PTS = 0x4000000
+
+// GetInputFormatFlags is an AVInputFormat's flags (AVFMT_*).
+func GetInputFormatFlags(f InputFormat) int32 {
+	if f == nil {
+		return 0
+	}
+	return *(*int32)(unsafe.Pointer(uintptr(f) + offsetInputFormatFlags))
+}
 
 // Format context flag constants
 const (
