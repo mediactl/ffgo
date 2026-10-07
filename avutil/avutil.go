@@ -62,6 +62,10 @@ var (
 	avOptSetInt    func(obj uintptr, name string, val int64, searchFlags int32) int32
 	avOptSetDouble func(obj uintptr, name string, val float64, searchFlags int32) int32
 
+	// Timestamp arithmetic: av_rescale_rnd takes only scalars, unlike the
+	// AVRational-by-value av_rescale_q_rnd.
+	avRescaleRnd func(a, b, c int64, rnd int32) int64
+
 	// Pixel format lookup by name (public API, no shim needed)
 	avGetPixFmt func(name string) int32
 
@@ -141,6 +145,7 @@ func registerBindings() {
 	purego.RegisterLibFunc(&avOptSet, lib, "av_opt_set")
 	purego.RegisterLibFunc(&avOptSetInt, lib, "av_opt_set_int")
 	purego.RegisterLibFunc(&avOptSetDouble, lib, "av_opt_set_double")
+	purego.RegisterLibFunc(&avRescaleRnd, lib, "av_rescale_rnd")
 
 	// Hardware context functions
 	purego.RegisterLibFunc(&avHWDeviceCtxCreate, lib, "av_hwdevice_ctx_create")
@@ -597,6 +602,15 @@ func OptSet(obj unsafe.Pointer, name, val string, searchFlags int32) error {
 		return NewError(ret, "av_opt_set")
 	}
 	return nil
+}
+
+// RescaleRnd is av_rescale_rnd: a*b/c rounded as rnd (an AVRounding) says,
+// without overflow. It returns 0 before FFmpeg is loaded.
+func RescaleRnd(a, b, c int64, rnd int32) int64 {
+	if avRescaleRnd == nil {
+		return 0
+	}
+	return avRescaleRnd(a, b, c, rnd)
 }
 
 // OptSetInt sets an integer option value on an AVOptions-enabled struct.
