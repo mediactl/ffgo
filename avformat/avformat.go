@@ -792,7 +792,25 @@ var (
 // every field here; the shim's are used whenever it matches the release.
 var (
 	offsetCodecParVideoDelay = layout.Offset("AVCodecParameters.video_delay", 120) // int video_delay
+	offsetCodecParProfile    = layout.Offset("AVCodecParameters.profile", 64)      // int profile
+	offsetCodecParLevel      = layout.Offset("AVCodecParameters.level", 68)        // int level
 )
+
+// GetCodecParProfile is codecpar's profile (AV_PROFILE_UNKNOWN, -99, when unknown).
+func GetCodecParProfile(par avcodec.Parameters) int32 {
+	if par == nil {
+		return -99
+	}
+	return *(*int32)(unsafe.Pointer(uintptr(par) + offsetCodecParProfile))
+}
+
+// GetCodecParLevel is codecpar's level (-99 when unknown).
+func GetCodecParLevel(par avcodec.Parameters) int32 {
+	if par == nil {
+		return -99
+	}
+	return *(*int32)(unsafe.Pointer(uintptr(par) + offsetCodecParLevel))
+}
 
 // GetCodecParVideoDelay is a video stream's codecpar video_delay: the
 // decoder's frame reorder depth (ffprobe's has_b_frames).

@@ -60,6 +60,9 @@ var (
 	avsubtitleFree         func(sub uintptr)
 	avcodecEncodeSubtitle  func(ctx, buf uintptr, size int32, sub uintptr) int32
 
+	// Probe names and sizes (public API, no shim needed)
+	avcodecProfileName func(id, profile int32) unsafe.Pointer
+
 	bindingsRegistered bool
 )
 
@@ -110,6 +113,7 @@ func registerBindings() {
 	purego.RegisterLibFunc(&avcodecDecodeSubtitle2, lib, "avcodec_decode_subtitle2")
 	purego.RegisterLibFunc(&avsubtitleFree, lib, "avsubtitle_free")
 	registerOptionalLibFunc(&avcodecEncodeSubtitle, lib, "avcodec_encode_subtitle")
+	registerOptionalLibFunc(&avcodecProfileName, lib, "avcodec_profile_name")
 
 	bindingsRegistered = true
 }
@@ -1212,6 +1216,19 @@ func EncodeSubtitle(ctx Context, buf unsafe.Pointer, size int, sub unsafe.Pointe
 		return -38 // ENOSYS
 	}
 	return avcodecEncodeSubtitle(uintptr(ctx), uintptr(buf), int32(size), uintptr(sub))
+}
+
+// ProfileName is avcodec_profile_name: FFmpeg's name for profile p of codec
+// id, numbered as the loaded library numbers it; "" when FFmpeg has none.
+func ProfileName(id CodecID, p int32) string {
+	if avcodecProfileName == nil {
+		return ""
+	}
+	name := avcodecProfileName(int32(id), p)
+	if name == nil {
+		return ""
+	}
+	return goString(name)
 }
 
 // SubtitleFree frees subtitle resources.

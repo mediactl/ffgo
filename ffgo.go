@@ -501,6 +501,11 @@ type StreamInfo struct {
 	// back by 3/23 s when it is positive and Decoder.SeekToPTS is false.
 	VideoDelay int
 
+	// Probe fields, as ffprobe -show_streams prints them (from the stream's
+	// codec parameters after avformat_find_stream_info).
+	Profile int // ProfileUnknown when unknown; see ProfileName
+	Level   int // -99 when unknown; ffprobe prints it for video
+
 	// codecPar stores the codec parameters for stream copy operations.
 	codecPar avcodec.Parameters
 }
