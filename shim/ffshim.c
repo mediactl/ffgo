@@ -35,6 +35,15 @@ static void internal_log_callback(void *avcl, int level, const char *fmt, va_lis
         return;
     }
 
+    /* av_log gives a custom callback every level; only the default callback
+       filters. Filter here, as av_log_default_callback does (the low byte
+       is the level, the high byte a colour tint), so a decode at the default
+       level makes no Go call per debug line. */
+    int lvl = level >= 0 ? (level & 0xff) : level;
+    if (lvl > av_log_get_level()) {
+        return;
+    }
+
     char buf[4096];
     int len = vsnprintf(buf, sizeof(buf), fmt, vl);
 
