@@ -115,6 +115,7 @@ var (
 	// Struct layout of the headers the shim was compiled against.
 	shimOffsetof      func(field string) int32
 	shimBuiltVersions func(avutil, avcodec, avformat *int32)
+	shimAPIVersion    func() int32
 
 	// Hardware frames.
 	shimFrameHWFramesCtx     func(frame uintptr) uintptr
@@ -302,6 +303,7 @@ func registerBindings() {
 	// AVCodecParameters field helpers (optional)
 	registerOptionalLibFunc(&shimOffsetof, libShim, "ffshim_offsetof")
 	registerOptionalLibFunc(&shimBuiltVersions, libShim, "ffshim_built_versions")
+	registerOptionalLibFunc(&shimAPIVersion, libShim, "ffshim_api_version")
 	registerOptionalLibFunc(&shimFrameHWFramesCtx, libShim, "ffshim_frame_hw_frames_ctx")
 	registerOptionalLibFunc(&shimHWFramesFormat, libShim, "ffshim_hwframes_format")
 	registerOptionalLibFunc(&shimBufferSrcSetHWFrames, libShim, "ffshim_buffersrc_set_hw_frames")
@@ -1014,6 +1016,15 @@ func BuiltVersions() (avutil, avcodec, avformat int, ok bool) {
 	var u, c, f int32
 	shimBuiltVersions(&u, &c, &f)
 	return int(u), int(c), int(f), true
+}
+
+// APIVersion is the loaded shim's FFSHIM_API_VERSION: 0 without a shim, or
+// with one built before ffshim_api_version existed.
+func APIVersion() int {
+	if !loaded || shimAPIVersion == nil {
+		return 0
+	}
+	return int(shimAPIVersion())
 }
 
 // FrameHWFramesCtx is the GPU frame pool (an AVBufferRef) a hardware frame

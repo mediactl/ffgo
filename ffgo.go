@@ -62,6 +62,14 @@ func Version() (avutil, avcodec, avformat uint32) {
 	return bindings.AVUtilVersion(), bindings.AVCodecVersion(), bindings.AVFormatVersion()
 }
 
+// ShimAPIVersion is the loaded ffshim's FFSHIM_API_VERSION: 0 without a shim
+// or with one older than v0.0.0-clustarr.13. Code that reads FFmpeg 9 structs
+// through the shim refuses a version below the one it was written for.
+func ShimAPIVersion() int {
+	_ = shim.Load()
+	return shim.APIVersion()
+}
+
 // DiagnosticInfo contains diagnostic information about the ffgo library state.
 type DiagnosticInfo struct {
 	// Platform information

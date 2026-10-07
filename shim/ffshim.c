@@ -187,6 +187,8 @@ unsigned int ffshim_avformat_version(void) {
     return avformat_version();
 }
 
+int ffshim_api_version(void) { return FFSHIM_API_VERSION; }
+
 /* ============================================================================
  * AVDEVICE HELPERS (OPTIONAL)
  * ============================================================================ */

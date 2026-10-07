@@ -17,6 +17,15 @@
 extern "C" {
 #endif
 
+/* Raised whenever the shim gains a function or a layout-table field, so Go
+   can refuse a shim older than the code reading FFmpeg structs through it.
+   1 = v0.0.0-clustarr.13: api_version, the subtitle-header copy, the format
+   interrupt callback, buffer-source side data, and the probe and decode
+   layout fields and enum values. */
+#define FFSHIM_API_VERSION 1
+
+int ffshim_api_version(void);
+
 /* Callback type that Go can implement (no va_list) */
 typedef void (*ffshim_log_callback_t)(void *avcl, int level, const char *msg);
 
