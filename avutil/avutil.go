@@ -258,6 +258,8 @@ var (
 	offsetKeyFrame   = layout.OptionalOffset("AVFrame.key_frame", 120) // int key_frame at offset 120
 	offsetPts        = layout.Offset("AVFrame.pts", 136)               // int64 pts at offset 136
 	offsetSampleRate = layout.Offset("AVFrame.sample_rate", 216)       // int sample_rate at offset 216 (FFmpeg 6.x)
+
+	offsetBestEffortTimestamp = layout.Offset("AVFrame.best_effort_timestamp", 320) // int64 (7.1: 320, 9: 304 -- the shim's is used)
 )
 
 // GetFrameWidth returns the width of the frame.
@@ -314,6 +316,15 @@ func GetFramePTS(frame Frame) int64 {
 		return NoPTSValue
 	}
 	return *(*int64)(unsafe.Pointer(uintptr(frame) + offsetPts))
+}
+
+// GetFrameBestEffortTimestamp is the decoder's best-effort presentation
+// timestamp, the pts ffmpeg(1) gives a decoded video frame.
+func GetFrameBestEffortTimestamp(frame Frame) int64 {
+	if frame == nil {
+		return NoPTSValue
+	}
+	return *(*int64)(unsafe.Pointer(uintptr(frame) + offsetBestEffortTimestamp))
 }
 
 // SetFramePTS sets the presentation timestamp.

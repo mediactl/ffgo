@@ -663,6 +663,7 @@ static const struct ffshim_field ffshim_fields[] = {
     FFSHIM_FIELD(AVFrame, sample_rate), FFSHIM_FIELD(AVFrame, buf),
     FFSHIM_FIELD(AVFrame, extended_buf), FFSHIM_FIELD(AVFrame, nb_extended_buf),
     FFSHIM_FIELD(AVFrame, flags), FFSHIM_FIELD(AVFrame, ch_layout.nb_channels),
+    FFSHIM_FIELD(AVFrame, best_effort_timestamp),
     /* key_frame: deprecated in FFmpeg 6.1 (FF_API_FRAME_KEY), gone in 9.
        Before 6.1 the macro does not exist and the field does (libavutil
        below 59); after the removal neither exists. */

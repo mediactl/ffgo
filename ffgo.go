@@ -365,6 +365,11 @@ func (f Frame) PTS() int64 { return avutil.GetFramePTS(f.ptr) }
 // SetPTS sets the frame's presentation timestamp.
 func (f Frame) SetPTS(pts int64) { avutil.SetFramePTS(f.ptr, pts) }
 
+// BestEffortTimestamp is the decoder's best-effort presentation timestamp
+// (AVFrame.best_effort_timestamp), which ffmpeg(1) uses as a decoded video
+// frame's pts.
+func (f Frame) BestEffortTimestamp() int64 { return avutil.GetFrameBestEffortTimestamp(f.ptr) }
+
 // ChannelLayout is an audio frame's channel layout name ("5.1(side)"), or
 // "" without the shim.
 func (f Frame) ChannelLayout() string { return shim.FrameChLayoutDescribe(f.ptr) }
