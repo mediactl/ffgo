@@ -5,6 +5,7 @@ package ffgo
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 	"unsafe"
 
@@ -23,6 +24,11 @@ type StreamDecoderConfig struct {
 	ExtraHWFrames int
 	// Threads is the decoder's thread count; 0 is FFmpeg's default.
 	Threads int
+	// Options are AVOptions set on the codec context before it opens, as
+	// ffmpeg(1)'s per-stream decoder options are ("skip_frame": "nokey",
+	// "flags": "+unaligned", "threads": "auto"). They are applied in key
+	// order after Threads, so an entry here wins. An unknown name is an error.
+	Options map[string]string
 }
 
 // StreamDecoder decodes one stream of a Decoder's input from packets the
@@ -85,6 +91,16 @@ func (d *Decoder) NewStreamDecoder(streamIndex int, cfg *StreamDecoderConfig) (*
 			if err := avutil.OptSetInt(unsafe.Pointer(ctx), "extra_hw_frames", int64(cfg.ExtraHWFrames), 0); err != nil {
 				return fail(fmt.Errorf("ffgo: extra_hw_frames: %w", err))
 			}
+		}
+	}
+	keys := make([]string, 0, len(cfg.Options))
+	for k := range cfg.Options {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		if err := avutil.OptSet(unsafe.Pointer(ctx), k, cfg.Options[k], 0); err != nil {
+			return fail(fmt.Errorf("ffgo: decoder option %s=%s: %w", k, cfg.Options[k], err))
 		}
 	}
 	if err := avcodec.Open2(ctx, codec, nil); err != nil {
