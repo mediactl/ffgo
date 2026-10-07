@@ -333,6 +333,7 @@ func (d *Decoder) getStreamInfo(streamIdx int) *StreamInfo {
 		info.Height = int(avformat.GetCodecParHeight(codecPar))
 		info.PixelFmt = PixelFormat(avformat.GetCodecParFormat(codecPar))
 		info.VideoDelay = int(avformat.GetCodecParVideoDelay(codecPar))
+		info.FieldOrder = FieldOrder(avformat.GetCodecParFieldOrder(codecPar))
 
 		// Get frame rate
 		frNum, frDen := avformat.GetStreamAvgFrameRate(stream)

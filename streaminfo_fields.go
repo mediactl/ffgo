@@ -17,3 +17,33 @@ func ProfileName(id CodecID, p int) string { return avcodec.ProfileName(id, int3
 // as ffprobe prints an audio stream's bits_per_sample: 16 for pcm_s16le, 0
 // for a codec without a fixed size such as FLAC.
 func BitsPerSample(id CodecID) int { return int(avcodec.BitsPerSample(id)) }
+
+// FieldOrder is a video stream's AVFieldOrder.
+type FieldOrder int32
+
+const (
+	FieldOrderUnknown     FieldOrder = iota // AV_FIELD_UNKNOWN
+	FieldOrderProgressive                   // AV_FIELD_PROGRESSIVE
+	FieldOrderTT                            // AV_FIELD_TT: top coded first, top displayed first
+	FieldOrderBB                            // AV_FIELD_BB
+	FieldOrderTB                            // AV_FIELD_TB: top coded first, bottom displayed first
+	FieldOrderBT                            // AV_FIELD_BT
+)
+
+// String is ffprobe's name for the field order; "" when unknown, which
+// ffprobe prints as "unknown" and its JSON leaves out.
+func (f FieldOrder) String() string {
+	switch f {
+	case FieldOrderProgressive:
+		return "progressive"
+	case FieldOrderTT:
+		return "tt"
+	case FieldOrderBB:
+		return "bb"
+	case FieldOrderTB:
+		return "tb"
+	case FieldOrderBT:
+		return "bt"
+	}
+	return ""
+}

@@ -124,6 +124,13 @@ var streamInfoChecks = []streamInfoCheck{
 		}
 		return strconv.Itoa(si.BitsPerCodedSample), "16"
 	}},
+	{"field_order", func(si *StreamInfo, ff ffprobeStream) (string, string) {
+		if si.Type != MediaTypeVideo {
+			return "", ""
+		}
+		want, _ := ff.str("field_order")
+		return si.FieldOrder.String(), want
+	}},
 }
 
 // fixtureFacts pin that the fixtures give each compared field a real value,
@@ -140,6 +147,8 @@ var fixtureFacts = []struct {
 	{"avc.mp4", 0, "level", ""},
 	{"hdr.mkv", 1, "bits_per_raw_sample", "24"},
 	{"hdr.mkv", 2, "bits_per_sample", "16"},
+	{"ilace.mkv", 0, "field_order", "tb"},
+	{"hdr.mkv", 0, "field_order", "progressive"},
 }
 
 func TestStreamInfoReadsWhatFFprobePrints(t *testing.T) {
@@ -185,5 +194,17 @@ func TestProfileUnknownMatchesTheHeaders(t *testing.T) {
 	requireShim(t)
 	if v, ok := shim.EnumValue("AV_PROFILE_UNKNOWN"); !ok || v != ProfileUnknown {
 		t.Fatalf("AV_PROFILE_UNKNOWN: headers %d (known %v), ffgo %d", v, ok, ProfileUnknown)
+	}
+}
+
+func TestFieldOrderMatchesTheHeaders(t *testing.T) {
+	requireShim(t)
+	for name, v := range map[string]FieldOrder{
+		"AV_FIELD_UNKNOWN": FieldOrderUnknown, "AV_FIELD_PROGRESSIVE": FieldOrderProgressive,
+		"AV_FIELD_TT": FieldOrderTT, "AV_FIELD_BB": FieldOrderBB, "AV_FIELD_TB": FieldOrderTB, "AV_FIELD_BT": FieldOrderBT,
+	} {
+		if got, ok := shim.EnumValue(name); !ok || FieldOrder(got) != v {
+			t.Errorf("%s: headers %d (known %v), ffgo %d", name, got, ok, v)
+		}
 	}
 }

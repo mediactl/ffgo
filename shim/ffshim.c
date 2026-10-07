@@ -714,6 +714,7 @@ static const struct ffshim_field ffshim_fields[] = {
     FFSHIM_FIELD(AVCodecParameters, video_delay),
     FFSHIM_FIELD(AVCodecParameters, profile), FFSHIM_FIELD(AVCodecParameters, level),
     FFSHIM_FIELD(AVCodecParameters, bits_per_coded_sample), FFSHIM_FIELD(AVCodecParameters, bits_per_raw_sample),
+    FFSHIM_FIELD(AVCodecParameters, field_order),
     /* AVFormatContext */
     FFSHIM_FIELD(AVFormatContext, iformat), FFSHIM_FIELD(AVFormatContext, oformat),
     FFSHIM_FIELD(AVFormatContext, pb), FFSHIM_FIELD(AVFormatContext, nb_streams),
@@ -829,6 +830,8 @@ static const struct ffshim_enum ffshim_enums[] = {
 #ifdef AV_PROFILE_UNKNOWN
     FFSHIM_ENUM(AV_PROFILE_UNKNOWN),
 #endif
+    FFSHIM_ENUM(AV_FIELD_UNKNOWN), FFSHIM_ENUM(AV_FIELD_PROGRESSIVE), FFSHIM_ENUM(AV_FIELD_TT),
+    FFSHIM_ENUM(AV_FIELD_BB), FFSHIM_ENUM(AV_FIELD_TB), FFSHIM_ENUM(AV_FIELD_BT),
     FFSHIM_ENUM(AV_FRAME_DATA_MASTERING_DISPLAY_METADATA),
     FFSHIM_ENUM(AV_FRAME_DATA_CONTENT_LIGHT_LEVEL),
     FFSHIM_ENUM(AV_FRAME_DATA_DYNAMIC_HDR_PLUS),

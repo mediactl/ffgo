@@ -506,8 +506,9 @@ type StreamInfo struct {
 	Profile int // ProfileUnknown when unknown; see ProfileName
 	Level   int // -99 when unknown; ffprobe prints it for video
 
-	BitsPerRawSample   int // codecpar bits_per_raw_sample (24 for 24-bit FLAC); 0 when unknown
-	BitsPerCodedSample int // codecpar bits_per_coded_sample (16 for pcm_s16le)
+	BitsPerRawSample   int        // codecpar bits_per_raw_sample (24 for 24-bit FLAC); 0 when unknown
+	BitsPerCodedSample int        // codecpar bits_per_coded_sample (16 for pcm_s16le)
+	FieldOrder         FieldOrder // video: codecpar field_order
 
 	// codecPar stores the codec parameters for stream copy operations.
 	codecPar avcodec.Parameters

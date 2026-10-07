@@ -797,7 +797,16 @@ var (
 
 	offsetCodecParBitsPerCodedSample = layout.Offset("AVCodecParameters.bits_per_coded_sample", 56) // int bits_per_coded_sample
 	offsetCodecParBitsPerRawSample   = layout.Offset("AVCodecParameters.bits_per_raw_sample", 60)   // int bits_per_raw_sample
+	offsetCodecParFieldOrder         = layout.Offset("AVCodecParameters.field_order", 96)           // enum AVFieldOrder field_order
 )
+
+// GetCodecParFieldOrder is a video stream's codecpar field_order (AV_FIELD_*).
+func GetCodecParFieldOrder(par avcodec.Parameters) int32 {
+	if par == nil {
+		return 0
+	}
+	return *(*int32)(unsafe.Pointer(uintptr(par) + offsetCodecParFieldOrder))
+}
 
 // GetCodecParBitsPerCodedSample is codecpar's bits_per_coded_sample (16 for
 // pcm_s16le).
