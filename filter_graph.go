@@ -72,6 +72,12 @@ type FilterGraphConfig struct {
 	// configured, so hwupload can upload software frames to it and
 	// vpp_qsv or scale_vaapi can make their own pools on it.
 	HWDevice *HWDevice
+
+	// InputSideData, when set, gives the buffer source that frame's side
+	// data before the graph is configured, as ffmpeg(1) does with an input's
+	// first frame: every global entry (mastering display, light level, ...)
+	// plus the downmix info, which aresample reads at init, not per frame.
+	InputSideData *Frame
 }
 
 // ErrFilterGraphClosed is returned when operating on a closed filter graph.
@@ -178,6 +184,11 @@ func (g *FilterGraph) setupVideoFilters(cfg FilterGraphConfig) error {
 		g.bufferSrc, err = avfilter.GraphCreateFilter(g.graph, bufferSrc, "in", srcArgs)
 		if err != nil {
 			return fmt.Errorf("ffgo: failed to create buffersrc: %w", err)
+		}
+	}
+	if cfg.InputSideData != nil {
+		if err := shim.BufferSrcSetSideData(g.bufferSrc, cfg.InputSideData.ptr); err != nil {
+			return err
 		}
 	}
 
@@ -387,6 +398,11 @@ func (g *FilterGraph) setupAudioFilters(cfg FilterGraphConfig) error {
 	g.bufferSrc, err = avfilter.GraphCreateFilter(g.graph, abufferSrc, "in", srcArgs)
 	if err != nil {
 		return fmt.Errorf("ffgo: failed to create abuffer: %w", err)
+	}
+	if cfg.InputSideData != nil {
+		if err := shim.BufferSrcSetSideData(g.bufferSrc, cfg.InputSideData.ptr); err != nil {
+			return err
+		}
 	}
 
 	// Create abuffersink (audio buffer sink)

@@ -124,6 +124,7 @@ var (
 	shimFrameHWFramesCtx     func(frame uintptr) uintptr
 	shimHWFramesFormat       func(frames uintptr) int32
 	shimBufferSrcSetHWFrames func(src, frames uintptr) int32
+	shimBufferSrcSetSideData func(src, frame uintptr) int32
 )
 
 // Load attempts to load the ffshim library.
@@ -310,6 +311,7 @@ func registerBindings() {
 	registerOptionalLibFunc(&shimFrameHWFramesCtx, libShim, "ffshim_frame_hw_frames_ctx")
 	registerOptionalLibFunc(&shimHWFramesFormat, libShim, "ffshim_hwframes_format")
 	registerOptionalLibFunc(&shimBufferSrcSetHWFrames, libShim, "ffshim_buffersrc_set_hw_frames")
+	registerOptionalLibFunc(&shimBufferSrcSetSideData, libShim, "ffshim_buffersrc_set_side_data")
 	registerOptionalLibFunc(&shimCodecParWidth, libShim, "ffshim_codecpar_width")
 	registerOptionalLibFunc(&shimCodecParHeight, libShim, "ffshim_codecpar_height")
 	registerOptionalLibFunc(&shimCodecParFormat, libShim, "ffshim_codecpar_format")
@@ -1070,6 +1072,24 @@ func BufferSrcSetHWFrames(src, frames unsafe.Pointer) error {
 	}
 	if ret := shimBufferSrcSetHWFrames(uintptr(src), uintptr(frames)); ret < 0 {
 		return fmt.Errorf("ffgo: av_buffersrc_parameters_set: %d", ret)
+	}
+	return nil
+}
+
+// BufferSrcSetSideData gives a buffer source the side data ffmpeg(1)
+// forwards from an input frame (global entries plus the downmix info).
+func BufferSrcSetSideData(src, frame unsafe.Pointer) error {
+	if !loaded {
+		return fmt.Errorf("%w: side data on a buffer source requires the shim", ErrShimNotLoaded)
+	}
+	if shimBufferSrcSetSideData == nil {
+		return errors.New("ffgo: this shim was built without ffshim_buffersrc_set_side_data")
+	}
+	if ret := shimBufferSrcSetSideData(uintptr(src), uintptr(frame)); ret < 0 {
+		if ret == averrorENOSYS {
+			return fmt.Errorf("ffgo: buffer source side data: %w", ErrENOSYS)
+		}
+		return fmt.Errorf("ffgo: av_buffersrc_parameters_set (side data): %d", ret)
 	}
 	return nil
 }

@@ -197,6 +197,11 @@ void ffshim_built_versions(int *avutil, int *avcodec, int *avformat);
 void *ffshim_frame_hw_frames_ctx(void *frame);
 int ffshim_hwframes_format(void *frames_ref);
 int ffshim_buffersrc_set_hw_frames(void *src_ctx, void *frames_ref);
+/* Gives a buffer source the side data ffmpeg(1) forwards from an input's
+   frame: every entry whose descriptor is AV_SIDE_DATA_PROP_GLOBAL, plus
+   AV_FRAME_DATA_DOWNMIX_INFO (fftools/ffmpeg_filter.c ifilter_parameters_from_frame).
+   ENOSYS where AVBufferSrcParameters has no side data (before libavfilter 11). */
+int ffshim_buffersrc_set_side_data(void *src_ctx, const void *frame);
 
 /* Header enum values, stream disposition, channel layout names. */
 int ffshim_enum_value(const char *name, int *out);

@@ -819,6 +819,40 @@ int ffshim_buffersrc_set_hw_frames(void *src_ctx, void *frames_ref) {
     av_free(p);
     return ret;
 }
+
+int ffshim_buffersrc_set_side_data(void *src_ctx, const void *frame) {
+#if LIBAVFILTER_VERSION_MAJOR >= 11
+    const AVFrame *f = frame;
+    AVFrameSideData **sd = NULL;
+    int nb = 0, ret = 0;
+    for (int i = 0; i < f->nb_side_data; i++) {
+        const AVFrameSideData *e = f->side_data[i];
+        const AVSideDataDescriptor *desc = av_frame_side_data_desc(e->type);
+        if (e->type != AV_FRAME_DATA_DOWNMIX_INFO && !(desc && (desc->props & AV_SIDE_DATA_PROP_GLOBAL)))
+            continue;
+        if ((ret = av_frame_side_data_clone(&sd, &nb, e, 0)) < 0)
+            goto end;
+    }
+    if (nb > 0) {
+        AVBufferSrcParameters *p = av_buffersrc_parameters_alloc();
+        if (!p) {
+            ret = AVERROR(ENOMEM);
+            goto end;
+        }
+        p->side_data = sd;
+        p->nb_side_data = nb;
+        ret = av_buffersrc_parameters_set((AVFilterContext *)src_ctx, p); /* clones them */
+        av_free(p);
+    }
+end:
+    av_frame_side_data_free(&sd, &nb);
+    return ret;
+#else
+    (void)src_ctx;
+    (void)frame;
+    return AVERROR(ENOSYS);
+#endif
+}
 #endif /* FFSHIM_HAVE_AVFILTER */
 
 /* ============================================================================
