@@ -798,7 +798,21 @@ var (
 	offsetCodecParBitsPerCodedSample = layout.Offset("AVCodecParameters.bits_per_coded_sample", 56) // int bits_per_coded_sample
 	offsetCodecParBitsPerRawSample   = layout.Offset("AVCodecParameters.bits_per_raw_sample", 60)   // int bits_per_raw_sample
 	offsetCodecParFieldOrder         = layout.Offset("AVCodecParameters.field_order", 96)           // enum AVFieldOrder field_order
+	offsetCodecParColorRange         = layout.Offset("AVCodecParameters.color_range", 100)          // enum AVColorRange color_range
+	offsetCodecParColorPrimaries     = layout.Offset("AVCodecParameters.color_primaries", 104)      // enum AVColorPrimaries color_primaries
+	offsetCodecParColorTrc           = layout.Offset("AVCodecParameters.color_trc", 108)            // enum AVColorTransferCharacteristic color_trc
+	offsetCodecParColorSpace         = layout.Offset("AVCodecParameters.color_space", 112)          // enum AVColorSpace color_space
 )
+
+// GetCodecParColor is codecpar's colour description: range, primaries,
+// transfer characteristic and matrix (AVColor* codes).
+func GetCodecParColor(par avcodec.Parameters) (rng, primaries, trc, space int32) {
+	if par == nil {
+		return 0, 2, 2, 2 // unspecified
+	}
+	at := func(off uintptr) int32 { return *(*int32)(unsafe.Pointer(uintptr(par) + off)) }
+	return at(offsetCodecParColorRange), at(offsetCodecParColorPrimaries), at(offsetCodecParColorTrc), at(offsetCodecParColorSpace)
+}
 
 // GetCodecParFieldOrder is a video stream's codecpar field_order (AV_FIELD_*).
 func GetCodecParFieldOrder(par avcodec.Parameters) int32 {

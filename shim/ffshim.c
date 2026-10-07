@@ -715,6 +715,8 @@ static const struct ffshim_field ffshim_fields[] = {
     FFSHIM_FIELD(AVCodecParameters, profile), FFSHIM_FIELD(AVCodecParameters, level),
     FFSHIM_FIELD(AVCodecParameters, bits_per_coded_sample), FFSHIM_FIELD(AVCodecParameters, bits_per_raw_sample),
     FFSHIM_FIELD(AVCodecParameters, field_order),
+    FFSHIM_FIELD(AVCodecParameters, color_range), FFSHIM_FIELD(AVCodecParameters, color_primaries),
+    FFSHIM_FIELD(AVCodecParameters, color_trc), FFSHIM_FIELD(AVCodecParameters, color_space),
     /* AVFormatContext */
     FFSHIM_FIELD(AVFormatContext, iformat), FFSHIM_FIELD(AVFormatContext, oformat),
     FFSHIM_FIELD(AVFormatContext, pb), FFSHIM_FIELD(AVFormatContext, nb_streams),

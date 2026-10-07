@@ -509,6 +509,7 @@ type StreamInfo struct {
 	BitsPerRawSample   int        // codecpar bits_per_raw_sample (24 for 24-bit FLAC); 0 when unknown
 	BitsPerCodedSample int        // codecpar bits_per_coded_sample (16 for pcm_s16le)
 	FieldOrder         FieldOrder // video: codecpar field_order
+	Color              ColorSpec  // video: codecpar's colour description; Names() as ffprobe prints it
 
 	// codecPar stores the codec parameters for stream copy operations.
 	codecPar avcodec.Parameters

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/obinnaokechukwu/ffgo/internal/shim"
@@ -131,6 +132,21 @@ var streamInfoChecks = []streamInfoCheck{
 		want, _ := ff.str("field_order")
 		return si.FieldOrder.String(), want
 	}},
+	{"color", func(si *StreamInfo, ff ffprobeStream) (string, string) {
+		if si.Type != MediaTypeVideo {
+			return "", ""
+		}
+		p, tr, sp, rg := si.Color.Names()
+		var want []string
+		for _, k := range []string{"color_primaries", "color_transfer", "color_space", "color_range"} {
+			v, ok := ff.str(k)
+			if !ok {
+				v = "unknown" // ffprobe prints "unknown", which JSON leaves out
+			}
+			want = append(want, v)
+		}
+		return strings.Join([]string{p, tr, sp, rg}, ","), strings.Join(want, ",")
+	}},
 }
 
 // fixtureFacts pin that the fixtures give each compared field a real value,
@@ -149,6 +165,8 @@ var fixtureFacts = []struct {
 	{"hdr.mkv", 2, "bits_per_sample", "16"},
 	{"ilace.mkv", 0, "field_order", "tb"},
 	{"hdr.mkv", 0, "field_order", "progressive"},
+	{"hdr.mkv", 0, "color_space", "bt2020nc"},
+	{"hdr.mkv", 0, "color_range", "tv"},
 }
 
 func TestStreamInfoReadsWhatFFprobePrints(t *testing.T) {
