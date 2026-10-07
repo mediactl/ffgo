@@ -585,6 +585,12 @@ void* ffshim_formatctx_program(void *ctx, int index) {
     return (void*)fc->programs[index];
 }
 
+void ffshim_formatctx_set_interrupt(void *ctx, void *cb, void *opaque) {
+    AVFormatContext *s = ctx;
+    s->interrupt_callback.callback = (int (*)(void *))cb;
+    s->interrupt_callback.opaque = opaque;
+}
+
 int64_t ffshim_chapter_id(void *ch) {
     if (ch == NULL) {
         return 0;

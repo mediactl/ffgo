@@ -96,12 +96,13 @@ var (
 	shimCodecCtxCopySubtitleHeader func(dst, src uintptr) int32
 
 	// AVFormatContext / chapter / program helpers (optional)
-	shimFormatCtxDuration   func(ctx uintptr) int64
-	shimFormatCtxBitRate    func(ctx uintptr) int64
-	shimFormatCtxNbChapters func(ctx uintptr) uint32
-	shimFormatCtxChapter    func(ctx uintptr, index int32) uintptr
-	shimFormatCtxNbPrograms func(ctx uintptr) uint32
-	shimFormatCtxProgram    func(ctx uintptr, index int32) uintptr
+	shimFormatCtxDuration     func(ctx uintptr) int64
+	shimFormatCtxBitRate      func(ctx uintptr) int64
+	shimFormatCtxNbChapters   func(ctx uintptr) uint32
+	shimFormatCtxChapter      func(ctx uintptr, index int32) uintptr
+	shimFormatCtxNbPrograms   func(ctx uintptr) uint32
+	shimFormatCtxProgram      func(ctx uintptr, index int32) uintptr
+	shimFormatCtxSetInterrupt func(ctx, cb, opaque uintptr)
 
 	shimChapterID       func(ch uintptr) int64
 	shimChapterTimeBase func(ch uintptr, outNum, outDen *int32)
@@ -342,6 +343,7 @@ func registerBindings() {
 	registerOptionalLibFunc(&shimFormatCtxChapter, libShim, "ffshim_formatctx_chapter")
 	registerOptionalLibFunc(&shimFormatCtxNbPrograms, libShim, "ffshim_formatctx_nb_programs")
 	registerOptionalLibFunc(&shimFormatCtxProgram, libShim, "ffshim_formatctx_program")
+	registerOptionalLibFunc(&shimFormatCtxSetInterrupt, libShim, "ffshim_formatctx_set_interrupt")
 
 	registerOptionalLibFunc(&shimChapterID, libShim, "ffshim_chapter_id")
 	registerOptionalLibFunc(&shimChapterTimeBase, libShim, "ffshim_chapter_time_base")
@@ -1019,6 +1021,15 @@ func BuiltVersions() (avutil, avcodec, avformat int, ok bool) {
 	var u, c, f int32
 	shimBuiltVersions(&u, &c, &f)
 	return int(u), int(c), int(f), true
+}
+
+// FormatCtxSetInterrupt installs an interrupt callback on a format context.
+func FormatCtxSetInterrupt(ctx unsafe.Pointer, cb, opaque uintptr) error {
+	if !loaded || shimFormatCtxSetInterrupt == nil {
+		return fmt.Errorf("%w: an interrupt callback needs ffshim_formatctx_set_interrupt", ErrShimNotLoaded)
+	}
+	shimFormatCtxSetInterrupt(uintptr(ctx), cb, opaque)
+	return nil
 }
 
 // CodecCtxCopySubtitleHeader copies a decoder's subtitle_header to an

@@ -6,9 +6,11 @@ import (
 	"errors"
 	"sort"
 	"strings"
+	"unsafe"
 
 	"github.com/obinnaokechukwu/ffgo/avformat"
 	"github.com/obinnaokechukwu/ffgo/avutil"
+	"github.com/obinnaokechukwu/ffgo/internal/shim"
 )
 
 // FormatProbeResult contains detailed information about FFmpeg's demuxer probing result.
@@ -60,7 +62,7 @@ func (d *Decoder) ProbeScore() int {
 	return avformat.GetProbeScore(d.formatCtx)
 }
 
-func openInputWithRetries(path string, opts *DecoderOptions) (avformat.FormatContext, error) {
+func openInputWithRetries(path string, opts *DecoderOptions, interruptID uintptr) (avformat.FormatContext, error) {
 	var (
 		avOpts = buildDecoderAVOptions(opts)
 	)
@@ -72,7 +74,7 @@ func openInputWithRetries(path string, opts *DecoderOptions) (avformat.FormatCon
 		if forcedFmt == nil {
 			return nil, errors.New("ffgo: input format not found")
 		}
-		ctx, err := openInputOnce(path, forcedFmt, avOpts)
+		ctx, err := openInputOnce(path, forcedFmt, avOpts, interruptID)
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +88,7 @@ func openInputWithRetries(path string, opts *DecoderOptions) (avformat.FormatCon
 	}
 
 	// First try auto-detection.
-	ctx, err := openInputOnce(path, nil, avOpts)
+	ctx, err := openInputOnce(path, nil, avOpts, interruptID)
 	if err == nil {
 		if opts == nil || opts.ProbeScore <= 0 {
 			return ctx, nil
@@ -111,7 +113,7 @@ func openInputWithRetries(path string, opts *DecoderOptions) (avformat.FormatCon
 		if fmt == nil {
 			continue
 		}
-		ctx2, err2 := openInputOnce(path, fmt, avOpts)
+		ctx2, err2 := openInputOnce(path, fmt, avOpts, interruptID)
 		if err2 != nil {
 			err = err2
 			continue
@@ -130,7 +132,7 @@ func openInputWithRetries(path string, opts *DecoderOptions) (avformat.FormatCon
 	return nil, err
 }
 
-func openInputOnce(path string, fmt avformat.InputFormat, avOpts map[string]string) (avformat.FormatContext, error) {
+func openInputOnce(path string, fmt avformat.InputFormat, avOpts map[string]string, interruptID uintptr) (avformat.FormatContext, error) {
 	var dict avutil.Dictionary
 	for k, v := range avOpts {
 		if v == "" {
@@ -150,6 +152,17 @@ func openInputOnce(path string, fmt avformat.InputFormat, avOpts map[string]stri
 	}()
 
 	var ctx avformat.FormatContext
+	if interruptID != 0 {
+		// The callback must be on the context before avformat_open_input,
+		// which then uses this context (and frees it on failure).
+		if ctx = avformat.AllocContext(); ctx == nil {
+			return nil, ErrOutOfMemory
+		}
+		if err := shim.FormatCtxSetInterrupt(unsafe.Pointer(ctx), interruptCallback(), interruptID); err != nil {
+			avformat.FreeContext(ctx)
+			return nil, err
+		}
+	}
 	if err := avformat.OpenInput(&ctx, path, fmt, &dict); err != nil {
 		return nil, err
 	}

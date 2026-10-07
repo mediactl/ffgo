@@ -171,6 +171,11 @@ void* ffshim_formatctx_chapter(void *ctx, int index);
 unsigned int ffshim_formatctx_nb_programs(void *ctx);
 void* ffshim_formatctx_program(void *ctx, int index);
 
+/* Installs an AVIOInterruptCB on a format context allocated with
+   avformat_alloc_context, before avformat_open_input. cb is
+   int (*)(void *opaque). */
+void ffshim_formatctx_set_interrupt(void *ctx, void *cb, void *opaque);
+
 /* AVChapter field accessors */
 int64_t ffshim_chapter_id(void *ch);
 void ffshim_chapter_time_base(void *ch, int *out_num, int *out_den);

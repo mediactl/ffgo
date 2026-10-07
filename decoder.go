@@ -37,7 +37,8 @@ type Decoder struct {
 	customIO         *CustomIOContext
 	cleanup          func()
 	closed           bool
-	discarding       bool // Discard ran: ReadPacket skips discarded streams' packets
+	discarding       bool    // Discard ran: ReadPacket skips discarded streams' packets
+	interruptID      uintptr // registry id of the input's interrupt callback; 0 for none
 }
 
 // DecoderOptions configures decoder behavior.
@@ -77,6 +78,9 @@ type DecoderOptions struct {
 
 	// HWDevice specifies the hardware device for hardware acceleration (e.g., "cuda", "vaapi")
 	HWDevice string
+
+	// Interrupt aborts the input's I/O once closed (WithInterrupt).
+	Interrupt <-chan struct{}
 }
 
 // DecoderOption is a functional option for configuring a decoder.
@@ -225,16 +229,22 @@ func NewDecoderWithOptions(path string, opts *DecoderOptions) (*Decoder, error) 
 		audioStreamIdx: -1,
 	}
 
+	if opts != nil && opts.Interrupt != nil {
+		d.interruptID = registerInterrupt(opts.Interrupt)
+	}
+
 	// Open input file (with optional retry logic for ambiguous probing).
 	var err error
-	d.formatCtx, err = openInputWithRetries(path, opts)
+	d.formatCtx, err = openInputWithRetries(path, opts, d.interruptID)
 	if err != nil {
+		unregisterInterrupt(d.interruptID)
 		return nil, err
 	}
 
 	// Find stream info
 	if err := avformat.FindStreamInfo(d.formatCtx, nil); err != nil {
 		avformat.CloseInput(&d.formatCtx)
+		unregisterInterrupt(d.interruptID)
 		return nil, err
 	}
 
@@ -969,6 +979,8 @@ func (d *Decoder) Close() error {
 	if d.formatCtx != nil {
 		avformat.CloseInput(&d.formatCtx)
 	}
+	unregisterInterrupt(d.interruptID)
+	d.interruptID = 0
 
 	// Cleanup any extra resources (e.g. custom I/O, temp files).
 	if d.cleanup != nil {
