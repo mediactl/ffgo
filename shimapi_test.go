@@ -8,7 +8,7 @@ import "testing"
 // (MinShimAPI 1): an older shim would read FFmpeg 9 structs at old offsets.
 func TestShimAPIVersionIsTheForks(t *testing.T) {
 	requireShim(t)
-	if got := ShimAPIVersion(); got != 1 {
-		t.Fatalf("ShimAPIVersion() = %d, want 1 (FFSHIM_API_VERSION in shim/ffshim.h)", got)
+	if got := ShimAPIVersion(); got != 2 {
+		t.Fatalf("ShimAPIVersion() = %d, want 2 (FFSHIM_API_VERSION in shim/ffshim.h)", got)
 	}
 }

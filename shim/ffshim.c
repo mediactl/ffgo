@@ -1105,6 +1105,12 @@ void ffshim_frame_set_pict_type_none(void *frame) {
     ((AVFrame *)frame)->pict_type = AV_PICTURE_TYPE_NONE;
 }
 
+/* Sets a frame's picture type: AV_PICTURE_TYPE_I asks an encoder that is
+   given frame types for a keyframe there (fftools' -force_key_frames). */
+void ffshim_frame_set_pict_type(void *frame, int type) {
+    ((AVFrame *)frame)->pict_type = (enum AVPictureType)type;
+}
+
 /* A frame's channel count, from its AVChannelLayout. */
 int ffshim_frame_nb_channels(void *frame) { return ((AVFrame *)frame)->ch_layout.nb_channels; }
 

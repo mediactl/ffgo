@@ -9,6 +9,7 @@ var (
 	shimHWFramesNew       func(device uintptr, format, swFormat, width, height, pool int32, out *uintptr) int32
 	shimFilterSetHWDevice func(filter, device uintptr) int32
 	shimFrameSetPictNone  func(frame uintptr)
+	shimFrameSetPictType  func(frame uintptr, typ int32)
 	shimFrameNbChannels   func(frame uintptr) int32
 	shimFrameFillBlack    func(frame uintptr) int32
 )
@@ -18,6 +19,7 @@ func registerHWFramesBindings() {
 	registerOptionalLibFunc(&shimHWFramesNew, libShim, "ffshim_hwframes_new")
 	registerOptionalLibFunc(&shimFilterSetHWDevice, libShim, "ffshim_filter_set_hw_device")
 	registerOptionalLibFunc(&shimFrameSetPictNone, libShim, "ffshim_frame_set_pict_type_none")
+	registerOptionalLibFunc(&shimFrameSetPictType, libShim, "ffshim_frame_set_pict_type")
 	registerOptionalLibFunc(&shimFrameNbChannels, libShim, "ffshim_frame_nb_channels")
 	registerOptionalLibFunc(&shimFrameFillBlack, libShim, "ffshim_frame_fill_black")
 }
@@ -36,6 +38,16 @@ func FrameSetPictTypeNone(frame unsafe.Pointer) {
 	if loaded && shimFrameSetPictNone != nil && frame != nil {
 		shimFrameSetPictNone(uintptr(frame))
 	}
+}
+
+// FrameSetPictType sets a frame's pict_type (an AVPictureType); ENOSYS
+// without a shim that has it (API 2).
+func FrameSetPictType(frame unsafe.Pointer, typ int32) int32 {
+	if !loaded || shimFrameSetPictType == nil || frame == nil {
+		return averrorENOSYS
+	}
+	shimFrameSetPictType(uintptr(frame), typ)
+	return 0
 }
 
 // FrameNbChannels is an audio frame's channel count, or -1 without the shim.

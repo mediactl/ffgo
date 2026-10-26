@@ -63,7 +63,8 @@ func Version() (avutil, avcodec, avformat uint32) {
 }
 
 // ShimAPIVersion is the loaded ffshim's FFSHIM_API_VERSION: 0 without a shim
-// or with one older than v0.0.0-clustarr.13. Code that reads FFmpeg 9 structs
+// or with one older than v0.0.0-clustarr.13 (1 = .13, 2 = .14, which can
+// force a keyframe). Code that reads FFmpeg 9 structs
 // through the shim refuses a version below the one it was written for.
 func ShimAPIVersion() int {
 	_ = shim.Load()
@@ -364,6 +365,31 @@ func (f Frame) PTS() int64 { return avutil.GetFramePTS(f.ptr) }
 
 // SetPTS sets the frame's presentation timestamp.
 func (f Frame) SetPTS(pts int64) { avutil.SetFramePTS(f.ptr, pts) }
+
+// PictureType is a frame's AVPictureType.
+type PictureType int32
+
+const (
+	// PictureTypeNone leaves the frame's type to the encoder.
+	PictureTypeNone PictureType = 0
+	// PictureTypeI makes the frame a keyframe, with an encoder given frame
+	// types (VideoStreamEncoderConfig.KeepFrameTypes) and, for an IDR,
+	// its forced-idr option.
+	PictureTypeI PictureType = 1
+	PictureTypeP PictureType = 2
+	PictureTypeB PictureType = 3
+)
+
+// SetPictureType sets the frame's picture type, as fftools does for
+// -force_key_frames. It needs the shim's API 2 (v0.0.0-clustarr.14) and
+// does nothing without it.
+func (f Frame) SetPictureType(t PictureType) {
+	if t == PictureTypeNone {
+		shim.FrameSetPictTypeNone(unsafe.Pointer(f.ptr))
+		return
+	}
+	_ = shim.FrameSetPictType(unsafe.Pointer(f.ptr), int32(t))
+}
 
 // BestEffortTimestamp is the decoder's best-effort presentation timestamp
 // (AVFrame.best_effort_timestamp), which ffmpeg(1) uses as a decoded video

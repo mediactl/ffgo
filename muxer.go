@@ -126,6 +126,33 @@ func NewMuxerToWriter(w io.Writer, format string) (*Muxer, error) {
 	return m, nil
 }
 
+// NewMuxerToWriteSeeker creates a muxer writing to w, which it may seek: a
+// format that patches what it wrote (an MP4's mdat size and moov, a
+// Matroska file's cues) writes the same file it would on disk. Nothing is
+// read back, so a muxer option that rewrites the file (movflags +faststart)
+// is not supported.
+func NewMuxerToWriteSeeker(w io.WriteSeeker, format string) (*Muxer, error) {
+	if err := Init(); err != nil {
+		return nil, err
+	}
+	if w == nil {
+		return nil, errors.New("ffgo: writer cannot be nil")
+	}
+	if format == "" {
+		return nil, errors.New("ffgo: a writer muxer needs a format")
+	}
+	cio, err := NewCustomIOContext(&IOCallbacks{Write: w.Write, Seek: w.Seek}, true)
+	if err != nil {
+		return nil, err
+	}
+	m := &Muxer{customIO: cio, streams: make([]*MuxerStream, 0)}
+	if err := avformat.AllocOutputContext2(&m.formatCtx, nil, format, ""); err != nil {
+		_ = cio.Close()
+		return nil, err
+	}
+	return m, nil
+}
+
 // VideoStreamConfig configures a video stream for the muxer.
 type VideoStreamConfig struct {
 	Codec       CodecID     // Video codec (e.g., CodecIDH264)
@@ -778,6 +805,36 @@ func (m *Muxer) Flush() error {
 	}
 	if !m.headerWritten {
 		return errors.New("ffgo: header not written")
+	}
+	if err := avformat.WriteFrame(m.formatCtx, nil); err != nil {
+		return err
+	}
+	if m.customIO != nil {
+		avformat.IOFlush(m.customIO.AVIOContext())
+	} else {
+		avformat.IOFlush(m.ioCtx)
+	}
+	return nil
+}
+
+// Drain hands the writer every byte of every packet written so far:
+// av_interleaved_write_frame(ctx, NULL) empties the interleaving queue,
+// av_write_frame(ctx, NULL) the muxer's own buffers (an MPEG-TS PES not
+// yet full), and avio_flush the I/O buffer. Muxing goes on after it, so a
+// caller cutting segments drains, takes what was written, then writes the
+// packet that starts the next one. A muxer without AVFMT_ALLOW_FLUSH
+// refuses the second step.
+func (m *Muxer) Drain() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.closed {
+		return errors.New("ffgo: muxer is closed")
+	}
+	if !m.headerWritten {
+		return errors.New("ffgo: header not written")
+	}
+	if err := avformat.InterleavedWriteFrame(m.formatCtx, nil); err != nil {
+		return err
 	}
 	if err := avformat.WriteFrame(m.formatCtx, nil); err != nil {
 		return err

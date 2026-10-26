@@ -21,8 +21,10 @@ extern "C" {
    can refuse a shim older than the code reading FFmpeg structs through it.
    1 = v0.0.0-clustarr.13: api_version, the subtitle-header copy, the format
    interrupt callback, buffer-source side data, and the probe and decode
-   layout fields and enum values. */
-#define FFSHIM_API_VERSION 1
+   layout fields and enum values.
+   2 = v0.0.0-clustarr.14: frame_set_pict_type, so a caller can force a
+   keyframe. */
+#define FFSHIM_API_VERSION 2
 
 int ffshim_api_version(void);
 
@@ -235,6 +237,7 @@ int ffshim_codec_id(void *codec);
 int ffshim_hwframes_new(void *device_ref, int format, int sw_format, int width, int height, int pool, void **out);
 int ffshim_filter_set_hw_device(void *filter_ctx, void *device_ref);
 void ffshim_frame_set_pict_type_none(void *frame);
+void ffshim_frame_set_pict_type(void *frame, int type);
 int ffshim_frame_nb_channels(void *frame);
 int ffshim_frame_fill_black(void *frame);
 void ffshim_codecpar_sar(void *par, int *num, int *den);
