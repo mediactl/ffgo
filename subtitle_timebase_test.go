@@ -34,13 +34,13 @@ func TestSubtitleDecoderFillsPTSAndEndTime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	ss := d.SubtitleStream()
 	sub, err := NewSubtitleDecoder(ss)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer sub.Close()
+	defer func() { _ = sub.Close() }()
 	var got []*Subtitle
 	for {
 		p, err := d.ReadPacket()

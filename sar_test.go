@@ -31,7 +31,7 @@ func TestStreamsReportTheSampleAspectRatio(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	if got := d.Streams()[0].SampleAspectRatio; got != NewRational(32, 27) {
 		t.Errorf("SampleAspectRatio %v, want 32/27", got)
 	}
@@ -44,7 +44,7 @@ func TestACopiedStreamKeepsItsSampleAspectRatio(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	out := filepath.Join(t.TempDir(), "o.mkv")
 	m, err := NewMuxer(out, "matroska")
 	if err != nil {
@@ -92,7 +92,7 @@ func TestAnEncodedStreamKeepsTheSampleAspectRatio(t *testing.T) {
 	if err != nil {
 		t.Skipf("no libx265: %v", err)
 	}
-	defer enc.Close()
+	defer func() { _ = enc.Close() }()
 	out := filepath.Join(t.TempDir(), "o.mkv")
 	m, err := NewMuxer(out, "matroska")
 	if err != nil {

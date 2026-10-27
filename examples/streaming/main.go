@@ -36,7 +36,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to open input: %v\n", err)
 		os.Exit(1)
 	}
-	defer dec.Close()
+	defer func() { _ = dec.Close() }()
 
 	if !dec.HasVideo() {
 		fmt.Fprintln(os.Stderr, "Input has no video stream.")
@@ -68,7 +68,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to create streaming encoder: %v\n", err)
 		os.Exit(1)
 	}
-	defer enc.Close()
+	defer func() { _ = enc.Close() }()
 
 	// Stream a short sample (first N frames) for demonstration.
 	const maxFrames = 150

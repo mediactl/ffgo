@@ -51,7 +51,7 @@ func TestDecodedFramesCarryMasteringDisplayAndLightLevel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	f, err := d.DecodeVideo()
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +71,7 @@ func TestDecodedFramesCarryMasteringDisplayAndLightLevel(t *testing.T) {
 func TestRemoveSideDataDropsOnlyTheNamedTypes(t *testing.T) {
 	requireShim(t)
 	f := softwareFrame(t)
-	defer f.Free()
+	defer func() { _ = f.Free() }()
 	if err := f.AddSideData(FrameSideHDRPlus(), []byte{1, 2, 3}); err != nil {
 		t.Fatal(err)
 	}

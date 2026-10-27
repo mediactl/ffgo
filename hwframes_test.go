@@ -21,13 +21,13 @@ func encodeThrough(t *testing.T, dev *HWDevice, clip, filters, encoderName strin
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	vs := d.VideoStream()
 	dec, err := d.NewStreamDecoder(vs.Index, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer dec.Close()
+	defer func() { _ = dec.Close() }()
 	g, err := NewFilterGraph(FilterGraphConfig{
 		Width: vs.Width, Height: vs.Height, PixelFmt: vs.PixelFmt, TimeBase: dec.TimeBase(),
 		Filters: filters, HWDevice: dev,
@@ -35,7 +35,7 @@ func encodeThrough(t *testing.T, dev *HWDevice, clip, filters, encoderName strin
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer g.Close()
+	defer func() { _ = g.Close() }()
 
 	var enc *VideoStreamEncoder
 	packets := 0
@@ -99,7 +99,7 @@ func encodeThrough(t *testing.T, dev *HWDevice, clip, filters, encoderName strin
 	if enc == nil {
 		t.Fatal("no frame reached the encoder")
 	}
-	defer enc.Close()
+	defer func() { _ = enc.Close() }()
 	if err := enc.Flush(emit); err != nil {
 		t.Fatal(err)
 	}

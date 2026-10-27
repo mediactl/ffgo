@@ -29,20 +29,20 @@ func hdr10Transcode(t *testing.T, src string, r hdrRun) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	vs := d.VideoStream()
 	dec, err := d.NewStreamDecoder(vs.Index, &StreamDecoderConfig{HWDevice: r.device, ExtraHWFrames: 16})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer dec.Close()
+	defer func() { _ = dec.Close() }()
 
 	out := filepath.Join(t.TempDir(), "out.mkv")
 	m, err := NewMuxer(out, "matroska")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer m.Close()
+	defer func() { _ = m.Close() }()
 
 	var (
 		enc   *VideoStreamEncoder
@@ -51,10 +51,10 @@ func hdr10Transcode(t *testing.T, src string, r hdrRun) string {
 	)
 	defer func() {
 		if enc != nil {
-			enc.Close()
+			_ = enc.Close()
 		}
 		if graph != nil {
-			graph.Close()
+			_ = graph.Close()
 		}
 	}()
 	emit := func(p *Packet) error { return m.WritePacket(ms, p) }

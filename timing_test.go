@@ -63,7 +63,7 @@ func TestFrameRateDetect(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDecoder failed: %v", err)
 	}
-	defer dec.Close()
+	defer func() { _ = dec.Close() }()
 
 	fps, err := FrameRateDetect(dec)
 	if err != nil {

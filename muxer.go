@@ -468,7 +468,7 @@ func (m *Muxer) WriteSubtitle(ms *MuxerStream, ev SubtitleEvent) error {
 	if err != nil {
 		return fmt.Errorf("ffgo: subtitle packet: %w", err)
 	}
-	defer p.Free()
+	defer func() { _ = p.Free() }()
 	us := NewRational(1, 1_000_000)
 	ts := RescaleQ(ev.PTS, us, ms.timeBase)
 	avcodec.SetPacketPTS(p.ptr, ts)

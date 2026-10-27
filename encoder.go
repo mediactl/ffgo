@@ -592,9 +592,10 @@ func NewEncoderWithOptions(path string, opts *EncoderOptions) (*Encoder, error) 
 	if opts.Pass != 0 {
 		flags := avcodec.GetCtxFlags(e.codecCtx)
 		flags &^= (avcodec.CodecFlagPass1 | avcodec.CodecFlagPass2)
-		if opts.Pass == 1 {
+		switch opts.Pass {
+		case 1:
 			flags |= avcodec.CodecFlagPass1
-		} else if opts.Pass == 2 {
+		case 2:
 			flags |= avcodec.CodecFlagPass2
 		}
 		avcodec.SetCtxFlags(e.codecCtx, flags)
@@ -669,8 +670,7 @@ func NewEncoderWithOptions(path string, opts *EncoderOptions) (*Encoder, error) 
 	// Setup audio if configured
 	if opts.Audio != nil {
 		if err := e.setupAudio(opts.Audio); err != nil {
-			e.Close()
-			return nil, err
+			return nil, errors.Join(err, e.Close())
 		}
 	}
 
@@ -857,8 +857,7 @@ func newEncoderStreamCopy(path string, opts *EncoderOptions) (*Encoder, error) {
 	// Setup audio encoding if CopyVideo but encoding audio
 	if opts.CopyVideo && opts.Audio != nil && !opts.CopyAudio {
 		if err := e.setupAudio(opts.Audio); err != nil {
-			e.Close()
-			return nil, err
+			return nil, errors.Join(err, e.Close())
 		}
 	}
 

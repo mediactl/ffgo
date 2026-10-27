@@ -33,7 +33,7 @@ func TestPrebuiltShimDefinesEveryDeclaredFunction(t *testing.T) {
 	if err != nil {
 		t.Skipf("the prebuilt shim does not load on this host (built for another FFmpeg?): %v", err)
 	}
-	defer purego.Dlclose(lib)
+	defer func() { _ = purego.Dlclose(lib) }()
 	decls := regexp.MustCompile(`\b(ffshim_[a-z0-9_]+)\s*\(`).FindAllSubmatch(hdr, -1)
 	if len(decls) < 95 {
 		t.Fatalf("found %d declarations in ffshim.h, want at least 95 (91 at .11 plus this tag's four)", len(decls))

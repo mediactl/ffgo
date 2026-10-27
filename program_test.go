@@ -61,7 +61,7 @@ func TestDecoderPrograms_ListAndSelect(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDecoder failed: %v", err)
 	}
-	defer dec.Close()
+	defer func() { _ = dec.Close() }()
 
 	progs := dec.Programs()
 	if len(progs) < 2 {
@@ -88,7 +88,7 @@ func TestDecoderPrograms_ListAndSelect(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDecoderWithOptions failed: %v", err)
 	}
-	defer dec2.Close()
+	defer func() { _ = dec2.Close() }()
 
 	if !dec2.HasVideo() {
 		t.Fatalf("expected selected program to have video")

@@ -61,13 +61,13 @@ func firstRGBFrame(t *testing.T, path string, withColor, untag bool) []byte {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	si := d.VideoStream()
 	sd, err := d.NewStreamDecoder(si.Index, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer sd.Close()
+	defer func() { _ = sd.Close() }()
 	var got []byte
 	decodeStream(t, d, sd, func(f Frame) {
 		if got != nil {
@@ -90,7 +90,7 @@ func firstRGBFrame(t *testing.T, path string, withColor, untag bool) []byte {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer g.Close()
+		defer func() { _ = g.Close() }()
 		out, err := g.Filter(&f)
 		if err != nil || len(out) == 0 {
 			t.Fatalf("filter: %d frames, %v", len(out), err)

@@ -294,7 +294,7 @@ func NewDecoderFromIOWithOptions(callbacks *IOCallbacks, opts *DecoderOptions) (
 	// Allocate format context
 	formatCtx := avformat.AllocContext()
 	if formatCtx == nil {
-		ioCtx.Close()
+		_ = ioCtx.Close()
 		return nil, errors.New("ffgo: failed to allocate format context")
 	}
 
@@ -309,7 +309,7 @@ func NewDecoderFromIOWithOptions(callbacks *IOCallbacks, opts *DecoderOptions) (
 	if opts != nil && opts.Format != "" {
 		inputFmt = avformat.FindInputFormat(opts.Format)
 		if inputFmt == nil {
-			ioCtx.Close()
+			_ = ioCtx.Close()
 			avformat.FreeContext(formatCtx)
 			return nil, errors.New("ffgo: input format not found")
 		}
@@ -325,7 +325,7 @@ func NewDecoderFromIOWithOptions(callbacks *IOCallbacks, opts *DecoderOptions) (
 			if avDict != nil {
 				avutil.DictFree(&avDict)
 			}
-			ioCtx.Close()
+			_ = ioCtx.Close()
 			avformat.FreeContext(formatCtx)
 			return nil, err
 		}
@@ -336,7 +336,7 @@ func NewDecoderFromIOWithOptions(callbacks *IOCallbacks, opts *DecoderOptions) (
 		if avDict != nil {
 			avutil.DictFree(&avDict)
 		}
-		ioCtx.Close()
+		_ = ioCtx.Close()
 		avformat.FreeContext(formatCtx)
 		return nil, err
 	}
@@ -349,7 +349,7 @@ func NewDecoderFromIOWithOptions(callbacks *IOCallbacks, opts *DecoderOptions) (
 	// Find stream info
 	if err := avformat.FindStreamInfo(formatCtx, nil); err != nil {
 		avformat.CloseInput(&formatCtx)
-		ioCtx.Close()
+		_ = ioCtx.Close()
 		return nil, err
 	}
 
@@ -377,14 +377,14 @@ func NewDecoderFromIOWithOptions(callbacks *IOCallbacks, opts *DecoderOptions) (
 	// Allocate packet and frame
 	d.packet = avcodec.PacketAlloc()
 	if d.packet == nil {
-		d.Close()
-		ioCtx.Close()
+		_ = d.Close()
+		_ = ioCtx.Close()
 		return nil, errors.New("ffgo: failed to allocate packet")
 	}
 
 	d.frame = avutil.FrameAlloc()
 	if d.frame == nil {
-		d.Close()
+		_ = d.Close()
 		return nil, errors.New("ffgo: failed to allocate frame")
 	}
 
@@ -522,12 +522,12 @@ func NewEncoderFromIO(callbacks *IOCallbacks, format string, config EncoderConfi
 	// Allocate output context with format
 	var formatCtx avformat.FormatContext
 	if err := avformat.AllocOutputContext2(&formatCtx, nil, format, ""); err != nil {
-		ioCtx.Close()
+		_ = ioCtx.Close()
 		return nil, err
 	}
 
 	if formatCtx == nil {
-		ioCtx.Close()
+		_ = ioCtx.Close()
 		return nil, errors.New("ffgo: failed to allocate output context")
 	}
 
@@ -538,7 +538,7 @@ func NewEncoderFromIO(callbacks *IOCallbacks, format string, config EncoderConfi
 	stream := avformat.NewStream(formatCtx, nil)
 	if stream == nil {
 		avformat.FreeContext(formatCtx)
-		ioCtx.Close()
+		_ = ioCtx.Close()
 		return nil, errors.New("ffgo: failed to create output stream")
 	}
 
@@ -553,7 +553,7 @@ func NewEncoderFromIO(callbacks *IOCallbacks, format string, config EncoderConfi
 	codec := avcodec.FindEncoder(config.CodecID)
 	if codec == nil {
 		avformat.FreeContext(formatCtx)
-		ioCtx.Close()
+		_ = ioCtx.Close()
 		return nil, errors.New("ffgo: encoder not found")
 	}
 
@@ -561,7 +561,7 @@ func NewEncoderFromIO(callbacks *IOCallbacks, format string, config EncoderConfi
 	codecCtx := avcodec.AllocContext3(codec)
 	if codecCtx == nil {
 		avformat.FreeContext(formatCtx)
-		ioCtx.Close()
+		_ = ioCtx.Close()
 		return nil, errors.New("ffgo: failed to allocate codec context")
 	}
 
@@ -597,7 +597,7 @@ func NewEncoderFromIO(callbacks *IOCallbacks, format string, config EncoderConfi
 	if err := avcodec.Open2(codecCtx, codec, nil); err != nil {
 		avcodec.FreeContext(&codecCtx)
 		avformat.FreeContext(formatCtx)
-		ioCtx.Close()
+		_ = ioCtx.Close()
 		return nil, err
 	}
 
@@ -606,7 +606,7 @@ func NewEncoderFromIO(callbacks *IOCallbacks, format string, config EncoderConfi
 	if err := avcodec.ParametersFromContext(codecPar, codecCtx); err != nil {
 		avcodec.FreeContext(&codecCtx)
 		avformat.FreeContext(formatCtx)
-		ioCtx.Close()
+		_ = ioCtx.Close()
 		return nil, err
 	}
 
@@ -614,7 +614,7 @@ func NewEncoderFromIO(callbacks *IOCallbacks, format string, config EncoderConfi
 	if err := avformat.WriteHeader(formatCtx, nil); err != nil {
 		avcodec.FreeContext(&codecCtx)
 		avformat.FreeContext(formatCtx)
-		ioCtx.Close()
+		_ = ioCtx.Close()
 		return nil, err
 	}
 
@@ -623,7 +623,7 @@ func NewEncoderFromIO(callbacks *IOCallbacks, format string, config EncoderConfi
 	if packet == nil {
 		avcodec.FreeContext(&codecCtx)
 		avformat.FreeContext(formatCtx)
-		ioCtx.Close()
+		_ = ioCtx.Close()
 		return nil, errors.New("ffgo: failed to allocate packet")
 	}
 

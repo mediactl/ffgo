@@ -23,7 +23,7 @@ func TestDiscardKeepsOnlyTheNamedStreamsPackets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	audio := d.AudioStream().Index
 	if err := d.Discard(audio); err != nil {
 		t.Fatal(err)
@@ -62,7 +62,7 @@ func TestDiscardRefusesAStreamTheInputLacks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	if err := d.Discard(99); err == nil {
 		t.Fatal("Discard(99) on a two-stream input succeeded")
 	}

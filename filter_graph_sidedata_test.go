@@ -46,12 +46,12 @@ func downmixPCM(t *testing.T, path string, withSideData bool) []byte {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	sd, err := d.NewStreamDecoder(d.AudioStream().Index, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer sd.Close()
+	defer func() { _ = sd.Close() }()
 	var g *FilterGraph
 	var pcm []byte
 	take := func(out []*Frame) {

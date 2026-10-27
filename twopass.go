@@ -26,7 +26,7 @@ func TwoPassTranscode(input, output string, opts *EncoderOptions) error {
 	if err != nil {
 		return err
 	}
-	defer dec.Close()
+	defer func() { _ = dec.Close() }()
 
 	if !dec.HasVideo() {
 		return errors.New("ffgo: input has no video stream")
@@ -129,7 +129,7 @@ func runPass(dec *Decoder, videoInfo *StreamInfo, output string, baseOpts *Encod
 	if err != nil {
 		return err
 	}
-	defer enc.Close()
+	defer func() { _ = enc.Close() }()
 
 	// Scaler if needed
 	var scaler *Scaler
@@ -146,7 +146,7 @@ func runPass(dec *Decoder, videoInfo *StreamInfo, output string, baseOpts *Encod
 		if err != nil {
 			return err
 		}
-		defer s.Close()
+		defer func() { _ = s.Close() }()
 		scaler = s
 	}
 
@@ -201,4 +201,3 @@ func cleanupPassLogFiles(base string) {
 		}
 	}
 }
-

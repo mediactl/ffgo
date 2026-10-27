@@ -21,13 +21,13 @@ func TestStreamDecoderSendReportsAFullDecoder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	vi := d.VideoStream().Index
 	sd, err := d.NewStreamDecoder(vi, &StreamDecoderConfig{Threads: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer sd.Close()
+	defer func() { _ = sd.Close() }()
 	decoded, sent := 0, 0
 	drain := func() {
 		for {
@@ -97,7 +97,7 @@ func TestRawCodecIDsDecodeAsThemselves(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	s := d.Streams()[0]
 	if s.CodecName != "pam" || s.Codec != "pam" {
 		t.Errorf("CodecName %q, Codec %q; want pam, pam", s.CodecName, s.Codec)
@@ -116,7 +116,7 @@ func TestStreamInfoCodecIsTheCodecNotTheDecoder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	if got := d.Streams()[0].Codec; got != "mp3" {
 		t.Errorf("Codec %q, want mp3 (the decoder is %q)", got, d.Streams()[0].CodecName)
 	}
@@ -145,7 +145,7 @@ func TestAudioEncoderRejectsAFrameOfAnotherLayout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer enc.Close()
+	defer func() { _ = enc.Close() }()
 	for name, f := range map[string]Frame{
 		"stereo":   silentFrame(t, 48000, "stereo", 1024),
 		"s16":      mustAudioFrame(t, SampleFormatS16, 48000, "5.1", 1024),
@@ -176,7 +176,7 @@ func TestAACKeepsSyncAcrossAGap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer enc.Close()
+	defer func() { _ = enc.Close() }()
 	var last int64
 	emit := func(p *Packet) error { last = p.PTS(); return nil }
 	pts := int64(48000) // starts at 1 s
@@ -209,7 +209,7 @@ func TestStreamSideDataReportsAbsenceWithoutAnError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	b, ok, err := StreamSideData(d.VideoStream().CodecParameters(), PacketSideMasteringDisplay())
 	if errors.Is(err, ErrNotSupported) {
 		t.Skip("stream side data needs FFmpeg 6.1")
@@ -223,7 +223,7 @@ func TestStreamSideDataReportsAbsenceWithoutAnError(t *testing.T) {
 func TestFrameChannelLayout(t *testing.T) {
 	requireShim(t)
 	f := silentFrame(t, 48000, "5.1(side)", 16)
-	defer f.Free()
+	defer func() { _ = f.Free() }()
 	if got := f.ChannelLayout(); got != "5.1(side)" {
 		t.Errorf("ChannelLayout %q, want 5.1(side)", got)
 	}
@@ -237,13 +237,13 @@ func TestStreamDecoderRefusesAFlushWhileItMayHoldInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	vi := d.VideoStream().Index
 	sd, err := d.NewStreamDecoder(vi, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer sd.Close()
+	defer func() { _ = sd.Close() }()
 	for {
 		p, err := d.ReadPacket()
 		if err != nil || p == nil {

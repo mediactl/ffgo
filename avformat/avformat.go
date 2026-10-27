@@ -727,7 +727,6 @@ const ()
 // Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
 var (
 	offsetStreamIndex        = layout.Offset("AVStream.index", 8)           // int index
-	offsetStreamID           = layout.Offset("AVStream.id", 12)             // int id
 	offsetStreamCodecPar     = layout.Offset("AVStream.codecpar", 16)       // AVCodecParameters *codecpar
 	offsetStreamTimeBase     = layout.Offset("AVStream.time_base", 32)      // AVRational time_base
 	offsetStreamMetadata     = layout.Offset("AVStream.metadata", 80)       // AVDictionary *metadata

@@ -19,7 +19,7 @@ func TestAWriterMuxerEmitsOneFragmentPerFlush(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	var src *StreamInfo
 	for _, s := range d.Streams() {
 		if s.Type == MediaTypeVideo {
@@ -31,7 +31,7 @@ func TestAWriterMuxerEmitsOneFragmentPerFlush(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer m.Close()
+	defer func() { _ = m.Close() }()
 	ms, err := m.AddCopyStream(&CopyStreamConfig{CodecParameters: src.CodecParameters(), TimeBase: src.TimeBase})
 	if err != nil {
 		t.Fatal(err)

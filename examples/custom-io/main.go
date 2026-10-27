@@ -44,7 +44,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to open file: %v\n", err)
 		os.Exit(1)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	fmt.Printf("\nOpening input via io.Reader: %s\n", inputFile)
 
@@ -56,7 +56,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to create decoder: %v\n", err)
 		os.Exit(1)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	// Print stream info
 	if decoder.HasVideo() {
@@ -124,7 +124,7 @@ func demonstrateCustomCallbacks(inputFile string) {
 		fmt.Fprintf(os.Stderr, "Failed to open file: %v\n", err)
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Track read statistics
 	totalBytesRead := int64(0)
@@ -154,7 +154,7 @@ func demonstrateCustomCallbacks(inputFile string) {
 		fmt.Fprintf(os.Stderr, "Failed to create decoder with callbacks: %v\n", err)
 		return
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	// Read a few frames
 	frameCount := 0

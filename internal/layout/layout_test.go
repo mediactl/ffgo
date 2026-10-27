@@ -65,7 +65,7 @@ func TestPixelFormatsComeFromTheLibrary(t *testing.T) {
 	// the deprecated constants hold 9.0's.
 	if set, _ := bindings.LoadedVersionSet(); set.FFmpeg == 9 {
 		for name, want := range map[string]avutil.PixelFormat{
-			"rgba64be": avutil.PixelFormatRGBA64BE, "rgba64le": avutil.PixelFormatRGBA64LE,
+			"rgba64be": avutil.PixelFormatRGBA64BE, "rgba64le": avutil.PixelFormatRGBA64LE, //nolint:staticcheck // the deprecated constants are what this checks
 		} {
 			if got := avutil.PixelFormatByName(name); got != want {
 				t.Errorf("%s: FFmpeg 9 says %d, ffgo's value is %d", name, got, want)

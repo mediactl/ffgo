@@ -23,7 +23,7 @@ func TestOneDemuxerDecodesEveryStreamOnItsOwnGoroutine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 
 	streams := d.Streams()
 	chans := map[int]chan *Packet{}
@@ -40,7 +40,7 @@ func TestOneDemuxerDecodesEveryStreamOnItsOwnGoroutine(t *testing.T) {
 		wg.Add(1)
 		go func(idx int, sd *StreamDecoder, ch chan *Packet) {
 			defer wg.Done()
-			defer sd.Close()
+			defer func() { _ = sd.Close() }()
 			drain := func() error {
 				for {
 					_, err := sd.Receive()
@@ -110,13 +110,13 @@ func TestStreamDecoderKeepsNVDECFramesOnTheGPU(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	vi := d.VideoStream().Index
 	sd, err := d.NewStreamDecoder(vi, &StreamDecoderConfig{HWDevice: dev, ExtraHWFrames: 8})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer sd.Close()
+	defer func() { _ = sd.Close() }()
 	n := 0
 	for done := false; !done; {
 		p, err := d.ReadPacket()

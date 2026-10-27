@@ -31,7 +31,7 @@ func TestNewStreamingEncoder_URLMappingAndLazyIO(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewStreamingEncoder failed: %v", err)
 	}
-	defer enc.Close()
+	defer func() { _ = enc.Close() }()
 
 	// Must not connect/open IO eagerly for URL outputs.
 	if enc.ioCtx != nil {

@@ -22,7 +22,7 @@ func TestScalerSetColorspace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewScaler failed: %v", err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 
 	if err := s.SetColorspace(ColorSpaceBT709, ColorSpaceBT2020NCL); err != nil {
 		t.Fatalf("SetColorspace failed: %v", err)

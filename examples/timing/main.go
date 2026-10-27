@@ -29,7 +29,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to open input: %v\n", err)
 		os.Exit(1)
 	}
-	defer dec.Close()
+	defer func() { _ = dec.Close() }()
 
 	if !dec.HasVideo() {
 		fmt.Fprintln(os.Stderr, "No video stream.")

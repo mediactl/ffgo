@@ -18,14 +18,14 @@ func TestStreamDecoderOptionsReachTheCodecContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	sd, err := d.NewStreamDecoder(d.VideoStream().Index, &StreamDecoderConfig{Options: map[string]string{
 		"skip_frame": "nokey", "threads": "auto", "flags": "+unaligned",
 	}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer sd.Close()
+	defer func() { _ = sd.Close() }()
 	n := 0
 	decodeStream(t, d, sd, func(Frame) { n++ })
 	if strconv.Itoa(n) != want || n != 3 {
@@ -38,7 +38,7 @@ func TestAnUnknownStreamDecoderOptionIsAnError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	_, err = d.NewStreamDecoder(d.VideoStream().Index, &StreamDecoderConfig{Options: map[string]string{"no_such_option": "1"}})
 	if err == nil || !strings.Contains(err.Error(), "no_such_option") {
 		t.Fatalf("err = %v, want an error naming no_such_option", err)

@@ -218,7 +218,7 @@ func NewHWDecoder(inputPath string, cfg *HWDecoderConfig) (*HWDecoder, error) {
 	// Allocate packet and frame
 	packet := avcodec.PacketAlloc()
 	if packet == nil {
-		avcodec.Close(codecCtx)
+		_ = avcodec.Close(codecCtx)
 		avcodec.FreeContext(&codecCtx)
 		avformat.CloseInput(&formatCtx)
 		return nil, errors.New("ffgo: failed to allocate packet")
@@ -227,7 +227,7 @@ func NewHWDecoder(inputPath string, cfg *HWDecoderConfig) (*HWDecoder, error) {
 	frame := avutil.FrameAlloc()
 	if frame == nil {
 		avcodec.PacketFree(&packet)
-		avcodec.Close(codecCtx)
+		_ = avcodec.Close(codecCtx)
 		avcodec.FreeContext(&codecCtx)
 		avformat.CloseInput(&formatCtx)
 		return nil, errors.New("ffgo: failed to allocate frame")
@@ -240,7 +240,7 @@ func NewHWDecoder(inputPath string, cfg *HWDecoderConfig) (*HWDecoder, error) {
 		if swFrame == nil {
 			avutil.FrameFree(&frame)
 			avcodec.PacketFree(&packet)
-			avcodec.Close(codecCtx)
+			_ = avcodec.Close(codecCtx)
 			avcodec.FreeContext(&codecCtx)
 			avformat.CloseInput(&formatCtx)
 			return nil, errors.New("ffgo: failed to allocate software frame")
@@ -426,7 +426,7 @@ func (d *HWDecoder) Close() error {
 		avcodec.PacketFree(&d.packet)
 	}
 	if d.videoCodecCtx != nil {
-		avcodec.Close(d.videoCodecCtx)
+		_ = avcodec.Close(d.videoCodecCtx)
 		avcodec.FreeContext(&d.videoCodecCtx)
 	}
 	if d.formatCtx != nil {

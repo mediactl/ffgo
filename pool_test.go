@@ -15,7 +15,7 @@ func TestFramePool_GetPutAndLimit(t *testing.T) {
 	}
 
 	p := NewFramePool(1)
-	defer p.Close()
+	defer func() { _ = p.Close() }()
 
 	f1, err := p.Get()
 	if err != nil {

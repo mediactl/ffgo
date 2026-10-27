@@ -31,7 +31,7 @@ func TestNVDECScaleCUDANVENCKeepsFramesOnTheGPU(t *testing.T) {
 	if err != nil {
 		t.Skipf("no CUDA device: %v", err)
 	}
-	defer dev.Close()
+	defer func() { _ = dev.Close() }()
 
 	src := filepath.Join(t.TempDir(), "src.mkv")
 	makeGPUClip(t, src)
@@ -41,7 +41,7 @@ func TestNVDECScaleCUDANVENCKeepsFramesOnTheGPU(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer dec.Close()
+	defer func() { _ = dec.Close() }()
 
 	first, err := dec.ReadHWFrame()
 	if err != nil {
@@ -56,7 +56,7 @@ func TestNVDECScaleCUDANVENCKeepsFramesOnTheGPU(t *testing.T) {
 	if err != nil {
 		t.Fatalf("filter graph on GPU frames: %v", err)
 	}
-	defer graph.Close()
+	defer func() { _ = graph.Close() }()
 
 	if f, ok := shim.HWFramesFormat(graph.OutputHWFramesCtx()); !ok || PixelFormat(f) != PixelFormatCUDA() {
 		t.Fatalf("scale_cuda's pool format is %d (ok=%v), want CUDA %d", f, ok, PixelFormatCUDA())
@@ -202,7 +202,7 @@ func TestHWDecoderDecodeVideoReturnsEveryFrame(t *testing.T) {
 	if err != nil {
 		t.Skipf("no CUDA device: %v", err)
 	}
-	defer dev.Close()
+	defer func() { _ = dev.Close() }()
 	src := filepath.Join(t.TempDir(), "src.mkv")
 	if out, err := exec.Command("ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
 		"-f", "lavfi", "-i", "testsrc2=size=640x360:rate=24", "-t", "10",
@@ -213,7 +213,7 @@ func TestHWDecoderDecodeVideoReturnsEveryFrame(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer dec.Close()
+	defer func() { _ = dec.Close() }()
 	n := 0
 	for {
 		_, err := dec.DecodeVideo()

@@ -28,7 +28,7 @@ func TestKeyFramesReadAsKeyFrames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer dec.Close()
+	defer func() { _ = dec.Close() }()
 	var got []bool
 	for {
 		f, err := dec.ReadFrame()

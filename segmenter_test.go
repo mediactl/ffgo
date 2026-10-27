@@ -34,7 +34,7 @@ func TestHLSSegmenter_Integration(t *testing.T) {
 		t.Logf("hls muxer not available: %v", err)
 		return
 	}
-	defer hls.Close()
+	defer func() { _ = hls.Close() }()
 
 	vs, err := hls.AddVideoStream(&VideoStreamConfig{
 		Codec:       CodecIDH264,
@@ -117,7 +117,7 @@ func TestDASHSegmenter_Integration(t *testing.T) {
 		t.Logf("dash muxer not available: %v", err)
 		return
 	}
-	defer dash.Close()
+	defer func() { _ = dash.Close() }()
 
 	vs, err := dash.AddVideoStream(&VideoStreamConfig{
 		Codec:       CodecIDH264,

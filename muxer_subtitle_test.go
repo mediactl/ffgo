@@ -48,7 +48,7 @@ func TestMuxerWritesTextSubtitleEvents(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer d.Close()
+			defer func() { _ = d.Close() }()
 			info := d.Streams()
 			if len(info) != 1 || info[0].Type != MediaTypeSubtitle || info[0].Language != "eng" ||
 				info[0].Disposition&DispositionForced == 0 {
@@ -61,7 +61,7 @@ func TestMuxerWritesTextSubtitleEvents(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer tr.Close()
+			defer func() { _ = tr.Close() }()
 			var got []SubtitleEvent
 			add := func(ev SubtitleEvent, ok bool, err error) bool {
 				if err != nil {

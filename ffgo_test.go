@@ -93,7 +93,7 @@ func TestDecoder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDecoder failed: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	// Check stream info
 	if !decoder.HasVideo() {
@@ -133,7 +133,7 @@ func TestDecoderDecodeVideo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDecoder failed: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	// Open video decoder
 	err = decoder.OpenVideoDecoder()
@@ -183,7 +183,7 @@ func TestScaler(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewScaler failed: %v", err)
 	}
-	defer scaler.Close()
+	defer func() { _ = scaler.Close() }()
 
 	// Verify dimensions
 	if scaler.SrcWidth() != 320 || scaler.SrcHeight() != 240 {
@@ -207,7 +207,7 @@ func TestScalerWithDecoder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDecoder failed: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	videoInfo := decoder.VideoStream()
 	if videoInfo == nil {
@@ -227,7 +227,7 @@ func TestScalerWithDecoder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewScaler failed: %v", err)
 	}
-	defer scaler.Close()
+	defer func() { _ = scaler.Close() }()
 
 	// Open video decoder
 	if err := decoder.OpenVideoDecoder(); err != nil {
@@ -310,7 +310,7 @@ func TestEncoder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewEncoder failed: %v", err)
 	}
-	defer encoder.Close()
+	defer func() { _ = encoder.Close() }()
 
 	// Verify encoder properties
 	if encoder.Width() != 320 {
@@ -401,7 +401,7 @@ func TestEncoderWriteFrames(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Cannot read output file: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	if !decoder.HasVideo() {
 		t.Error("Output file has no video stream")
@@ -476,7 +476,7 @@ func TestEncoderWithDecoder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDecoder failed: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	if !decoder.HasVideo() {
 		t.Fatal("No video stream in input")
@@ -550,14 +550,14 @@ func TestDecoderFromReader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Create decoder from reader
 	decoder, err := NewDecoderFromReader(file, "")
 	if err != nil {
 		t.Fatalf("NewDecoderFromReader failed: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	// Check stream info
 	if !decoder.HasVideo() {
@@ -591,14 +591,14 @@ func TestDecoderFromReaderWithDecode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Create decoder from reader
 	decoder, err := NewDecoderFromReader(file, "")
 	if err != nil {
 		t.Fatalf("NewDecoderFromReader failed: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	// Open video decoder
 	if err := decoder.OpenVideoDecoder(); err != nil {
@@ -640,7 +640,7 @@ func TestDecoderFromIOCallbacks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Track stats
 	totalBytesRead := int64(0)
@@ -669,7 +669,7 @@ func TestDecoderFromIOCallbacks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDecoderFromIO failed: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	// Check we can read stream info
 	if !decoder.HasVideo() {
@@ -727,7 +727,7 @@ func TestEncoderWithAudio(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewEncoderWithOptions failed: %v", err)
 	}
-	defer encoder.Close()
+	defer func() { _ = encoder.Close() }()
 
 	// Verify encoder has both video and audio
 	if !encoder.HasVideo() {
@@ -784,7 +784,7 @@ func TestEncoderWriteVideoAndAudioFrames(t *testing.T) {
 	// Allocate video frame
 	videoFrame := FrameAlloc()
 	if videoFrame.IsNil() {
-		encoder.Close()
+		_ = encoder.Close()
 		t.Fatal("Failed to allocate video frame")
 	}
 	defer func() { _ = FrameFree(&videoFrame) }()
@@ -794,7 +794,7 @@ func TestEncoderWriteVideoAndAudioFrames(t *testing.T) {
 	AVUtil.SetFrameFormat(videoFrame, int32(PixelFormatYUV420P))
 
 	if err := AVUtil.FrameGetBuffer(videoFrame, 0); err != nil {
-		encoder.Close()
+		_ = encoder.Close()
 		t.Fatalf("Failed to allocate video frame buffer: %v", err)
 	}
 
@@ -802,12 +802,12 @@ func TestEncoderWriteVideoAndAudioFrames(t *testing.T) {
 	numVideoFrames := 10
 	for i := 0; i < numVideoFrames; i++ {
 		if err := AVUtil.FrameMakeWritable(videoFrame); err != nil {
-			encoder.Close()
+			_ = encoder.Close()
 			t.Fatalf("FrameMakeWritable failed: %v", err)
 		}
 		fillTestFrame(videoFrame, i, 160, 120)
 		if err := encoder.WriteVideoFrame(videoFrame); err != nil {
-			encoder.Close()
+			_ = encoder.Close()
 			t.Fatalf("WriteVideoFrame failed at frame %d: %v", i, err)
 		}
 	}
@@ -833,7 +833,7 @@ func TestEncoderWriteVideoAndAudioFrames(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Cannot read output: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	if !decoder.HasVideo() {
 		t.Error("Output should have video")
@@ -898,7 +898,7 @@ func TestNewResampler(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewResampler failed: %v", err)
 	}
-	defer resampler.Close()
+	defer func() { _ = resampler.Close() }()
 
 	// Verify formats
 	if resampler.SrcFormat().SampleRate != 44100 {
@@ -949,7 +949,7 @@ func TestResamplerValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resampler, err := NewResampler(tt.src, tt.dst)
 			if err == nil {
-				resampler.Close()
+				_ = resampler.Close()
 				t.Error("Expected error, got nil")
 			}
 		})
@@ -1037,7 +1037,7 @@ func TestNewVideoFilterGraph(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewVideoFilterGraph failed: %v", err)
 	}
-	defer graph.Close()
+	defer func() { _ = graph.Close() }()
 
 	if !graph.IsVideo() {
 		t.Error("expected IsVideo() to be true")
@@ -1058,7 +1058,7 @@ func TestVideoFilterGraphWithScale(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewVideoFilterGraph failed: %v", err)
 	}
-	defer graph.Close()
+	defer func() { _ = graph.Close() }()
 
 	t.Log("NewVideoFilterGraph with scale filter succeeded")
 }
@@ -1072,7 +1072,7 @@ func TestVideoFilterGraphWithChain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewVideoFilterGraph failed: %v", err)
 	}
-	defer graph.Close()
+	defer func() { _ = graph.Close() }()
 
 	t.Log("NewVideoFilterGraph with filter chain succeeded")
 }
@@ -1132,14 +1132,14 @@ func TestFilterGraphValidation(t *testing.T) {
 				if err == nil {
 					t.Error("expected error, got nil")
 					if graph != nil {
-						graph.Close()
+						_ = graph.Close()
 					}
 				}
 			} else {
 				if err != nil {
 					t.Errorf("unexpected error: %v", err)
 				} else {
-					graph.Close()
+					_ = graph.Close()
 				}
 			}
 		})
@@ -1192,7 +1192,7 @@ func TestAudioFilterGraphBasic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewFilterGraph failed: %v", err)
 	}
-	defer graph.Close()
+	defer func() { _ = graph.Close() }()
 
 	if graph.IsVideo() {
 		t.Error("expected IsVideo() to be false")
@@ -1220,7 +1220,7 @@ func TestAudioFilterGraphVolume(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewFilterGraph with volume filter failed: %v", err)
 	}
-	defer graph.Close()
+	defer func() { _ = graph.Close() }()
 
 	t.Log("Audio filter graph with volume filter succeeded")
 }
@@ -1248,7 +1248,7 @@ func TestEncoderWithPreset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewEncoderWithOptions with preset failed: %v", err)
 	}
-	defer enc.Close()
+	defer func() { _ = enc.Close() }()
 
 	t.Logf("Encoder with preset=%s created successfully", PresetUltrafast)
 }
@@ -1275,7 +1275,7 @@ func TestEncoderWithCRF(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewEncoderWithOptions with CRF failed: %v", err)
 	}
-	defer enc.Close()
+	defer func() { _ = enc.Close() }()
 
 	t.Logf("Encoder with CRF=%d created successfully", 23)
 }
@@ -1303,7 +1303,7 @@ func TestEncoderWithProfile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewEncoderWithOptions with profile failed: %v", err)
 	}
-	defer enc.Close()
+	defer func() { _ = enc.Close() }()
 
 	t.Logf("Encoder with profile=%s level=%s created successfully", ProfileBaseline, Level3)
 }
@@ -1332,7 +1332,7 @@ func TestEncoderWithCodecOptions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewEncoderWithOptions with codec options failed: %v", err)
 	}
-	defer enc.Close()
+	defer func() { _ = enc.Close() }()
 
 	t.Log("Encoder with custom codec options created successfully")
 }
@@ -1361,7 +1361,7 @@ func TestEncoderWithAdvancedOptionsEncode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewEncoderWithOptions failed: %v", err)
 	}
-	defer enc.Close()
+	defer func() { _ = enc.Close() }()
 
 	// Create test frame
 	frame := FrameAlloc()
@@ -1424,7 +1424,7 @@ func TestRemuxer(t *testing.T) {
 	// Create and write frames
 	frame := FrameAlloc()
 	if frame.IsNil() {
-		enc.Close()
+		_ = enc.Close()
 		t.Fatal("Failed to allocate frame")
 	}
 
@@ -1433,19 +1433,21 @@ func TestRemuxer(t *testing.T) {
 	AVUtil.SetFrameFormat(frame, int32(PixelFormatYUV420P))
 	if err := AVUtil.FrameGetBuffer(frame, 0); err != nil {
 		_ = FrameFree(&frame)
-		enc.Close()
+		_ = enc.Close()
 		t.Fatalf("FrameGetBuffer failed: %v", err)
 	}
 
 	for i := 0; i < 30; i++ {
 		if err := enc.WriteFrame(frame); err != nil {
 			_ = FrameFree(&frame)
-			enc.Close()
+			_ = enc.Close()
 			t.Fatalf("WriteFrame failed: %v", err)
 		}
 	}
 	_ = FrameFree(&frame)
-	enc.Close()
+	if err := enc.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
 
 	// Now remux to MKV
 	dstDir := t.TempDir()
@@ -1458,20 +1460,24 @@ func TestRemuxer(t *testing.T) {
 
 	remuxer, err := NewRemuxer(dstPath, decoder, nil)
 	if err != nil {
-		decoder.Close()
+		_ = decoder.Close()
 		t.Fatalf("Failed to create remuxer: %v", err)
 	}
 
 	// Remux all packets
 	if err := remuxer.Remux(decoder); err != nil {
-		remuxer.Close()
-		decoder.Close()
+		_ = remuxer.Close()
+		_ = decoder.Close()
 		t.Fatalf("Remux failed: %v", err)
 	}
 
 	// Close remuxer BEFORE checking file size (to write trailer)
-	remuxer.Close()
-	decoder.Close()
+	if err := remuxer.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+	if err := decoder.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
 
 	// Verify output file exists
 	stat, err := os.Stat(dstPath)
@@ -1515,7 +1521,7 @@ func TestRemuxerSelectStreams(t *testing.T) {
 	// Write video frames
 	frame := FrameAlloc()
 	if frame.IsNil() {
-		enc.Close()
+		_ = enc.Close()
 		t.Fatal("Failed to allocate frame")
 	}
 	AVUtil.SetFrameWidth(frame, 160)
@@ -1527,14 +1533,16 @@ func TestRemuxerSelectStreams(t *testing.T) {
 		_ = enc.WriteFrame(frame)
 	}
 	_ = FrameFree(&frame)
-	enc.Close()
+	if err := enc.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
 
 	// Open source and remux only video stream
 	decoder, err := NewDecoder(srcPath)
 	if err != nil {
 		t.Fatalf("Failed to open source: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	dstDir := t.TempDir()
 	dstPath := filepath.Join(dstDir, "video_only.mp4")
@@ -1546,7 +1554,7 @@ func TestRemuxerSelectStreams(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create remuxer: %v", err)
 	}
-	defer remuxer.Close()
+	defer func() { _ = remuxer.Close() }()
 
 	if remuxer.NumOutputStreams() != 1 {
 		t.Errorf("Expected 1 output stream, got %d", remuxer.NumOutputStreams())
@@ -1586,7 +1594,7 @@ func TestMetadataRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	meta := decoder.GetMetadata()
 	if meta == nil {
@@ -1634,14 +1642,14 @@ func TestMetadataWrite(t *testing.T) {
 		"custom_key":   "custom_value",
 	}
 	if err := enc.SetMetadata(metadata); err != nil {
-		enc.Close()
+		_ = enc.Close()
 		t.Fatalf("SetMetadata failed: %v", err)
 	}
 
 	// Write some frames
 	frame := FrameAlloc()
 	if frame.IsNil() {
-		enc.Close()
+		_ = enc.Close()
 		t.Fatal("Failed to allocate frame")
 	}
 	AVUtil.SetFrameWidth(frame, 160)
@@ -1653,7 +1661,9 @@ func TestMetadataWrite(t *testing.T) {
 		_ = enc.WriteFrame(frame)
 	}
 	_ = FrameFree(&frame)
-	enc.Close()
+	if err := enc.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
 
 	// Verify metadata using ffprobe
 	cmd := exec.Command("ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", testFile)
@@ -1669,7 +1679,7 @@ func TestMetadataWrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open written file: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	readMeta := decoder.GetMetadata()
 	if readMeta != nil {
@@ -1711,7 +1721,7 @@ func TestHWDevice(t *testing.T) {
 		t.Logf("Failed to create HW device: %v", err)
 		return
 	}
-	defer device.Close()
+	defer func() { _ = device.Close() }()
 
 	if device.Type() != hwType {
 		t.Errorf("Expected type %d, got %d", hwType, device.Type())
@@ -1748,7 +1758,7 @@ func TestHWDecoder(t *testing.T) {
 		t.Logf("Failed to create HW device: %v", err)
 		return
 	}
-	defer device.Close()
+	defer func() { _ = device.Close() }()
 
 	// Create a test video file
 	testFile := createTestVideo(t)
@@ -1765,7 +1775,7 @@ func TestHWDecoder(t *testing.T) {
 		t.Logf("HW decoder not supported for this codec/device: %v", err)
 		return
 	}
-	defer hwDec.Close()
+	defer func() { _ = hwDec.Close() }()
 
 	t.Logf("Video: %dx%d", hwDec.VideoStream().Width, hwDec.VideoStream().Height)
 
@@ -1801,7 +1811,7 @@ func TestSeekPrecise(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	// Open video decoder
 	if err := decoder.OpenVideoDecoder(); err != nil {
@@ -1842,7 +1852,7 @@ func TestSeekToFrame(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	// Get total frames estimate
 	totalFrames := decoder.TotalFrames()
@@ -1893,7 +1903,7 @@ func TestExtractThumbnail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	duration := decoder.Duration()
 	midPoint := duration / 2
@@ -1924,7 +1934,7 @@ func TestExtractThumbnails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	// Extract 3 thumbnails
 	thumbnails, err := decoder.ExtractThumbnails(3)
@@ -1961,7 +1971,7 @@ func TestTotalFrames(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	totalFrames := decoder.TotalFrames()
 	t.Logf("Total frames: %d", totalFrames)
@@ -1986,7 +1996,7 @@ func TestSubtitleDetection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	hasSubtitle := decoder.HasSubtitle()
 	t.Logf("Has subtitle: %v", hasSubtitle)
@@ -2060,7 +2070,7 @@ func TestSubtitleDecoder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
-	defer dec.Close()
+	defer func() { _ = dec.Close() }()
 
 	subStream := dec.SubtitleStream()
 	if subStream == nil {
@@ -2072,7 +2082,7 @@ func TestSubtitleDecoder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create subtitle decoder: %v", err)
 	}
-	defer subDec.Close()
+	defer func() { _ = subDec.Close() }()
 
 	t.Logf("Subtitle stream: %+v", subDec.StreamInfo())
 
@@ -2130,7 +2140,7 @@ func TestBitstreamFilterNull(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create null BSF: %v", err)
 	}
-	defer bsf.Close()
+	defer func() { _ = bsf.Close() }()
 
 	// Initialize (null filter doesn't need codec params)
 	if err := bsf.Init(); err != nil {
@@ -2160,7 +2170,7 @@ func TestBitstreamFilterH264(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	videoStream := decoder.VideoStream()
 	if videoStream == nil {
@@ -2172,7 +2182,7 @@ func TestBitstreamFilterH264(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create BSF: %v", err)
 	}
-	defer bsf.Close()
+	defer func() { _ = bsf.Close() }()
 
 	// We need to read the codec parameters from the stream
 	// For now, just test that creation works
@@ -2206,14 +2216,14 @@ func TestStreamMetadata(t *testing.T) {
 		MetadataLanguage: "eng",
 		"handler_name":   "Video Track",
 	}); err != nil {
-		enc.Close()
+		_ = enc.Close()
 		t.Fatalf("SetStreamMetadata failed: %v", err)
 	}
 
 	// Write some frames
 	frame := FrameAlloc()
 	if frame.IsNil() {
-		enc.Close()
+		_ = enc.Close()
 		t.Fatal("Failed to allocate frame")
 	}
 	AVUtil.SetFrameWidth(frame, 160)
@@ -2225,14 +2235,16 @@ func TestStreamMetadata(t *testing.T) {
 		_ = enc.WriteFrame(frame)
 	}
 	_ = FrameFree(&frame)
-	enc.Close()
+	if err := enc.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
 
 	// Read back
 	decoder, err := NewDecoder(testFile)
 	if err != nil {
 		t.Fatalf("Failed to open written file: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	streamMeta := decoder.GetStreamMetadata(0)
 	if streamMeta != nil {
@@ -2263,7 +2275,7 @@ func TestSaveFrame(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to open file: %v", err)
 		}
-		defer decoder.Close()
+		defer func() { _ = decoder.Close() }()
 
 		frame, err := decoder.DecodeVideo()
 		if err != nil {
@@ -2288,7 +2300,7 @@ func TestSaveFrame(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to open file: %v", err)
 		}
-		defer decoder.Close()
+		defer func() { _ = decoder.Close() }()
 
 		frame, err := decoder.DecodeVideo()
 		if err != nil {
@@ -2313,7 +2325,7 @@ func TestSaveFrame(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to open file: %v", err)
 		}
-		defer decoder.Close()
+		defer func() { _ = decoder.Close() }()
 
 		frame, err := decoder.DecodeVideo()
 		if err != nil {
@@ -2399,7 +2411,7 @@ func TestGetKeyframes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	keyframes, err := decoder.GetKeyframes()
 	if err != nil {
@@ -2436,7 +2448,7 @@ func TestNewNetworkDecoder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open with network decoder: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	// Verify we can read the file
 	if decoder.VideoStream() == nil {
@@ -2486,7 +2498,7 @@ func TestGetAttachments(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	// Check HasAttachments
 	if !decoder.HasAttachments() {
@@ -2561,7 +2573,7 @@ title=Main Content
 	if err != nil {
 		t.Fatalf("Failed to open file: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	chapters := decoder.GetChapters()
 	t.Logf("Found %d chapters", len(chapters))
@@ -2620,7 +2632,7 @@ func TestImageSequenceDecoder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewImageSequenceDecoder failed: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	// Decode frames
 	frameCount := 0
@@ -2667,7 +2679,7 @@ func TestImageSequenceEncoder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewImageSequenceEncoder failed: %v", err)
 	}
-	defer encoder.Close()
+	defer func() { _ = encoder.Close() }()
 
 	// Create and write 3 test frames
 	for i := 0; i < 3; i++ {
@@ -2698,7 +2710,9 @@ func TestImageSequenceEncoder(t *testing.T) {
 	}
 
 	// Close flushes and finalizes the encoder
-	encoder.Close()
+	if err := encoder.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
 
 	// Verify output images exist
 	for i := 1; i <= 3; i++ {
@@ -2748,7 +2762,7 @@ This is a test
 	if err != nil {
 		t.Fatalf("NewDecoder failed: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	videoInfo := decoder.VideoStream()
 	if videoInfo == nil {
@@ -2767,7 +2781,7 @@ This is a test
 		}
 		t.Fatalf("NewSubtitleRenderer failed: %v", err)
 	}
-	defer renderer.Close()
+	defer func() { _ = renderer.Close() }()
 
 	// Verify subtitle path
 	if renderer.SubtitlePath() != srtPath {
@@ -2834,7 +2848,7 @@ Test
 		}
 		t.Fatalf("NewSubtitleRendererWithOptions failed: %v", err)
 	}
-	defer renderer.Close()
+	defer func() { _ = renderer.Close() }()
 
 	t.Log("SubtitleRendererWithOptions created successfully")
 }
@@ -2875,7 +2889,7 @@ func TestMuxer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewMuxer failed: %v", err)
 	}
-	defer muxer.Close()
+	defer func() { _ = muxer.Close() }()
 
 	// Add video stream
 	videoStream, err := muxer.AddVideoStream(&VideoStreamConfig{
@@ -2932,7 +2946,9 @@ func TestMuxer(t *testing.T) {
 	}
 
 	// Close muxer
-	muxer.Close()
+	if err := muxer.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
 
 	// Verify output file exists and has reasonable size
 	info, err := os.Stat(outputPath)
@@ -2949,7 +2965,7 @@ func TestMuxer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open output: %v", err)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	if !decoder.HasVideo() {
 		t.Error("Output has no video stream")

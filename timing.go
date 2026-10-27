@@ -72,7 +72,7 @@ func GenerateTimestamps(count int, timebase Rational, fps float64) []int64 {
 
 // ValidateTimestamps checks that frame PTS values are non-decreasing (ignoring AV_NOPTS_VALUE).
 func ValidateTimestamps(frames []*Frame) error {
-	var last int64 = avutil.NoPTSValue
+	last := avutil.NoPTSValue
 	for i, f := range frames {
 		if f == nil || f.ptr == nil {
 			continue
@@ -119,8 +119,8 @@ func FrameRateDetect(decoder *Decoder) (float64, error) {
 	}
 
 	const maxFrames = 90
-	var firstPTS int64 = avutil.NoPTSValue
-	var lastPTS int64 = avutil.NoPTSValue
+	firstPTS := avutil.NoPTSValue
+	lastPTS := avutil.NoPTSValue
 	var count int
 
 	for count < maxFrames {

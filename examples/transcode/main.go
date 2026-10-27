@@ -44,7 +44,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to open input: %v\n", err)
 		os.Exit(1)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	// Check for video stream
 	if !decoder.HasVideo() {
@@ -79,7 +79,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to create encoder: %v\n", err)
 		os.Exit(1)
 	}
-	defer encoder.Close()
+	defer func() { _ = encoder.Close() }()
 
 	// Create scaler if pixel format conversion is needed
 	var scaler *ffgo.Scaler
@@ -98,7 +98,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Failed to create scaler: %v\n", err)
 			os.Exit(1)
 		}
-		defer scaler.Close()
+		defer func() { _ = scaler.Close() }()
 	}
 
 	fmt.Println("\nTranscoding...")
@@ -120,7 +120,7 @@ func main() {
 		}
 
 		// Scale if necessary
-		var encFrame ffgo.Frame = frame
+		encFrame := frame
 		if scaler != nil {
 			encFrame, err = scaler.Scale(frame)
 			if err != nil {

@@ -22,12 +22,12 @@ func TestBestEffortTimestampIsFFprobes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	sd, err := d.NewStreamDecoder(d.VideoStream().Index, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer sd.Close()
+	defer func() { _ = sd.Close() }()
 	var got []string
 	decodeStream(t, d, sd, func(f Frame) { got = append(got, strconv.FormatInt(f.BestEffortTimestamp(), 10)) })
 	if strings.Join(got, " ") != strings.Join(want, " ") {

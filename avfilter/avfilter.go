@@ -34,10 +34,10 @@ var (
 // Function bindings
 var (
 	// Graph management
-	avfilter_graph_alloc         func() uintptr
-	avfilter_graph_free          func(graph *Graph)
-	avfilter_graph_config        func(graphctx, log_ctx uintptr) int32
-	avfilter_graph_parse2        func(graph uintptr, filters *byte, inputs, outputs *InOut) int32
+	avfilter_graph_alloc  func() uintptr
+	avfilter_graph_free   func(graph *Graph)
+	avfilter_graph_config func(graphctx, log_ctx uintptr) int32
+	avfilter_graph_parse2 func(graph uintptr, filters *byte, inputs, outputs *InOut) int32
 	// name and args are *byte, not uintptr: purego keeps a pointer argument
 	// alive for the call, and a uintptr keeps nothing, so the collector
 	// could free (and another goroutine reuse) a string C was still reading.
@@ -319,7 +319,6 @@ const ()
 
 // Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
 var (
-	offsetInOutName      = layout.Offset("AVFilterInOut.name", 0)
 	offsetInOutFilterCtx = layout.Offset("AVFilterInOut.filter_ctx", 8)
 	offsetInOutPadIdx    = layout.Offset("AVFilterInOut.pad_idx", 16)
 	offsetInOutNext      = layout.Offset("AVFilterInOut.next", 24)

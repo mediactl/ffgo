@@ -65,12 +65,12 @@ func TestTestmediaNeedsRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lavfi video source: %v", err)
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }()
 	aud, err := NewDecoderWithOptions("sine=frequency=440:duration=1:sample_rate=48000,aformat=channel_layouts=5.1(side)", &DecoderOptions{Format: "lavfi"})
 	if err != nil {
 		t.Fatalf("lavfi audio source: %v", err)
 	}
-	defer aud.Close()
+	defer func() { _ = aud.Close() }()
 
 	path := filepath.Join(t.TempDir(), "needs.mkv")
 	writeNeedsClip(t, path, src, aud)
@@ -79,7 +79,7 @@ func TestTestmediaNeedsRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	checkNeedsClip(t, d)
 }
 
@@ -93,7 +93,7 @@ func writeNeedsClip(t *testing.T, path string, src, aud *Decoder) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer m.Close()
+	defer func() { _ = m.Close() }()
 	if err := m.SetMetadata(Metadata{"title": "Clip", "CLUSTARR_PROFILE": "standard@abc"}); err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func writeNeedsClip(t *testing.T, path string, src, aud *Decoder) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer vdec.Close()
+	defer func() { _ = vdec.Close() }()
 	md, cll := masteringDisplayBlob(), lightLevelBlob()
 	venc, err := NewVideoStreamEncoder(VideoStreamEncoderConfig{
 		VideoEncoderConfig: VideoEncoderConfig{
@@ -130,7 +130,7 @@ func writeNeedsClip(t *testing.T, path string, src, aud *Decoder) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer venc.Close()
+	defer func() { _ = venc.Close() }()
 	vms, err := m.AddEncoderStream(venc, StreamOptions{
 		SideData: map[PacketSideDataType][]byte{PacketSideMasteringDisplay(): md, PacketSideContentLightLevel(): cll},
 	})
@@ -143,7 +143,7 @@ func writeNeedsClip(t *testing.T, path string, src, aud *Decoder) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer adec.Close()
+	defer func() { _ = adec.Close() }()
 	aenc, err := NewAudioEncoder(AudioEncoderConfig2{
 		EncoderName: "ac3", SampleRate: 48000, Layout: "5.1(side)", BitRate: 384000,
 		GlobalHeader: m.NeedsGlobalHeader(),
@@ -152,7 +152,7 @@ func writeNeedsClip(t *testing.T, path string, src, aud *Decoder) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer aenc.Close()
+	defer func() { _ = aenc.Close() }()
 	ams, err := m.AddEncoderStream(aenc, StreamOptions{Language: "jpn"})
 	if err != nil {
 		t.Fatal(err)
@@ -296,12 +296,12 @@ func TestAudioEncoderOptionsReachTheEncoder(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer enc.Close()
+		defer func() { _ = enc.Close() }()
 		f, err := NewAudioFrame(SampleFormatFLTP, 48000, "5.1(side)", 2*enc.FrameSize())
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer f.Free()
+		defer func() { _ = f.Free() }()
 		f.SetPTS(0)
 		var first []byte
 		emit := func(p *Packet) error {

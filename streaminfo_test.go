@@ -26,7 +26,7 @@ func TestStreamsReportDispositionLanguageAndLayout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	s := d.Streams()
 	if len(s) != 3 {
 		t.Fatalf("streams = %d, want 3", len(s))

@@ -28,7 +28,7 @@ func TestNamesAsFFprobePrintsThem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	if got := d.FormatName(); got != "matroska,webm" {
 		t.Errorf("FormatName %q", got)
 	}
@@ -57,7 +57,7 @@ func TestStreamsReportTheirBitRate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	if got := d.Streams()[0].BitRate; got != 448000 {
 		t.Errorf("BitRate %d, want 448000", got)
 	}

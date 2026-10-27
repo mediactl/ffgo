@@ -92,12 +92,12 @@ func TestMuxerRebuildsAFileStreamByStream(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	m, err := NewMuxer(out, "matroska")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer m.Close()
+	defer func() { _ = m.Close() }()
 
 	streams := map[int]*MuxerStream{}
 	var (
@@ -116,12 +116,12 @@ func TestMuxerRebuildsAFileStreamByStream(t *testing.T) {
 			if dec, err = d.NewStreamDecoder(s.Index, nil); err != nil {
 				t.Fatal(err)
 			}
-			defer dec.Close()
+			defer func() { _ = dec.Close() }()
 			if enc, err = NewAudioEncoder(AudioEncoderConfig2{SampleRate: 48000, Layout: "stereo", BitRate: 128000,
 				GlobalHeader: m.NeedsGlobalHeader(), InputTimeBase: dec.TimeBase()}); err != nil {
 				t.Fatal(err)
 			}
-			defer enc.Close()
+			defer func() { _ = enc.Close() }()
 			streams[s.Index], err = m.AddEncoderStream(enc, opts)
 		} else {
 			streams[s.Index], err = m.AddCopyStream(&CopyStreamConfig{CodecParameters: s.CodecParameters(), TimeBase: s.TimeBase, Options: opts})
@@ -211,7 +211,7 @@ func TestMuxerRebuildsAFileStreamByStream(t *testing.T) {
 	}
 	drain()
 	if res != nil {
-		defer res.Close()
+		defer func() { _ = res.Close() }()
 	}
 	if err := enc.Flush(emit); err != nil {
 		t.Fatal(err)

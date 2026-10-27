@@ -129,7 +129,7 @@ func NewSubtitleDecoder(stream *StreamInfo) (*SubtitleDecoder, error) {
 	// Allocate AVSubtitle struct (32 bytes)
 	subtitle := avutil.Malloc(32)
 	if subtitle == nil {
-		avcodec.Close(codecCtx)
+		_ = avcodec.Close(codecCtx)
 		avcodec.FreeContext(&codecCtx)
 		return nil, errors.New("ffgo: failed to allocate subtitle struct")
 	}
@@ -235,7 +235,7 @@ func (d *SubtitleDecoder) Close() error {
 		avutil.Free(d.subtitle)
 	}
 	if d.codecCtx != nil {
-		avcodec.Close(d.codecCtx)
+		_ = avcodec.Close(d.codecCtx)
 		avcodec.FreeContext(&d.codecCtx)
 	}
 
@@ -247,7 +247,6 @@ const ()
 
 // Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
 var (
-	offsetSubFormat           = layout.Offset("AVSubtitle.format", 0)             // uint32_t format
 	offsetSubStartDisplayTime = layout.Offset("AVSubtitle.start_display_time", 4) // uint32_t start_display_time
 	offsetSubEndDisplayTime   = layout.Offset("AVSubtitle.end_display_time", 8)   // uint32_t end_display_time
 	offsetSubNumRects         = layout.Offset("AVSubtitle.num_rects", 12)         // unsigned num_rects

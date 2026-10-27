@@ -25,7 +25,7 @@ func shimMatchesRelease(path string, set bindings.VersionSet) (bool, string) {
 	if err != nil {
 		return true, ""
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	libs, err := f.ImportedLibraries()
 	if err != nil {
 		return true, ""

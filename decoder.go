@@ -286,13 +286,13 @@ func NewDecoderWithOptions(path string, opts *DecoderOptions) (*Decoder, error) 
 	// Allocate packet and frame
 	d.packet = avcodec.PacketAlloc()
 	if d.packet == nil {
-		d.Close()
+		_ = d.Close()
 		return nil, errors.New("ffgo: failed to allocate packet")
 	}
 
 	d.frame = avutil.FrameAlloc()
 	if d.frame == nil {
-		d.Close()
+		_ = d.Close()
 		return nil, errors.New("ffgo: failed to allocate frame")
 	}
 
@@ -341,7 +341,8 @@ func (d *Decoder) getStreamInfo(streamIdx int) *StreamInfo {
 	info.BitsPerRawSample = int(avformat.GetCodecParBitsPerRawSample(codecPar))
 	info.BitsPerCodedSample = int(avformat.GetCodecParBitsPerCodedSample(codecPar))
 
-	if codecType == avutil.MediaTypeVideo {
+	switch codecType {
+	case avutil.MediaTypeVideo:
 		info.Width = int(avformat.GetCodecParWidth(codecPar))
 		info.Height = int(avformat.GetCodecParHeight(codecPar))
 		info.PixelFmt = PixelFormat(avformat.GetCodecParFormat(codecPar))
@@ -353,7 +354,7 @@ func (d *Decoder) getStreamInfo(streamIdx int) *StreamInfo {
 		// Get frame rate
 		frNum, frDen := avformat.GetStreamAvgFrameRate(stream)
 		info.FrameRate = avutil.NewRational(frNum, frDen)
-	} else if codecType == avutil.MediaTypeAudio {
+	case avutil.MediaTypeAudio:
 		info.SampleRate = int(avformat.GetCodecParSampleRate(codecPar))
 		info.Channels = int(avformat.GetCodecParChannels(codecPar))
 		info.ChannelOrder = ChannelOrder(avformat.GetCodecParChannelOrder(codecPar))

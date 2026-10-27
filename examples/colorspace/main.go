@@ -29,7 +29,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to open input: %v\n", err)
 		os.Exit(1)
 	}
-	defer dec.Close()
+	defer func() { _ = dec.Close() }()
 
 	if !dec.HasVideo() {
 		fmt.Fprintln(os.Stderr, "No video stream.")
@@ -65,7 +65,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "NewScaler failed: %v\n", err)
 		os.Exit(1)
 	}
-	defer sc.Close()
+	defer func() { _ = sc.Close() }()
 
 	if err := sc.SetColorspace(ffgo.ColorSpaceBT709, ffgo.ColorSpaceBT2020NCL); err != nil {
 		fmt.Fprintf(os.Stderr, "SetColorspace failed: %v\n", err)

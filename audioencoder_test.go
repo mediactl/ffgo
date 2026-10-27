@@ -32,7 +32,7 @@ func transcodeAudio(t *testing.T, src, layout string, bitRate int64) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	var in *StreamInfo
 	for _, s := range d.Streams() {
 		if s.Type == MediaTypeAudio {
@@ -47,20 +47,20 @@ func transcodeAudio(t *testing.T, src, layout string, bitRate int64) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer dec.Close()
+	defer func() { _ = dec.Close() }()
 
 	out := filepath.Join(t.TempDir(), "out.mkv")
 	m, err := NewMuxer(out, "matroska")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer m.Close()
+	defer func() { _ = m.Close() }()
 	enc, err := NewAudioEncoder(AudioEncoderConfig2{SampleRate: 48000, Layout: layout, BitRate: bitRate, GlobalHeader: true,
 		InputTimeBase: dec.TimeBase()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer enc.Close()
+	defer func() { _ = enc.Close() }()
 	ms := addEncoderStreamForTest(t, m, enc)
 	if err := m.WriteHeader(); err != nil {
 		t.Fatal(err)
@@ -69,7 +69,7 @@ func transcodeAudio(t *testing.T, src, layout string, bitRate int64) string {
 	var res *Resampler
 	defer func() {
 		if res != nil {
-			res.Close()
+			_ = res.Close()
 		}
 	}()
 	emit := func(p *Packet) error { return m.WritePacket(ms, p) }
@@ -205,7 +205,7 @@ func TestAACEncoderTakesAnyFrameSize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer enc.Close()
+	defer func() { _ = enc.Close() }()
 	if enc.FrameSize() != 1024 {
 		t.Fatalf("AAC frame size %d, want 1024", enc.FrameSize())
 	}

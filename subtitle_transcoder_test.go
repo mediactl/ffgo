@@ -50,13 +50,13 @@ func TestSubtitleTranscoderMatchesFFmpegsSRT(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer d.Close()
+			defer func() { _ = d.Close() }()
 			idx := d.SubtitleStreamIndex()
 			tr, err := d.NewSubtitleTranscoder(idx, "srt")
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer tr.Close()
+			defer func() { _ = tr.Close() }()
 			var evs []SubtitleEvent
 			add := func(ev SubtitleEvent, ok bool, err error) bool {
 				if err != nil {
@@ -94,7 +94,7 @@ func TestSubtitleTranscoderRefusesANonSubtitleStream(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	if _, err := d.NewSubtitleTranscoder(0, "srt"); err == nil { // stream 0 is the video
 		t.Fatal("NewSubtitleTranscoder on a video stream succeeded")
 	}

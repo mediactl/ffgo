@@ -19,7 +19,7 @@ func TestVideoDelayIsWhatFFprobeCallsHasBFrames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	for _, si := range d.Streams() {
 		if si.Type != MediaTypeVideo {
 			continue

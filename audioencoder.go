@@ -234,7 +234,7 @@ func (e *AudioEncoder) sendFromFifo(n int, emit func(*Packet) error) error {
 	if err != nil {
 		return err
 	}
-	defer f.Free()
+	defer func() { _ = f.Free() }()
 	if ret := shim.AudioFifoReadFrame(e.fifo, unsafe.Pointer(f.ptr), n); int(ret) < n {
 		return avutil.NewError(ret, "av_audio_fifo_read")
 	}

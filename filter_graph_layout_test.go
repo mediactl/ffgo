@@ -42,12 +42,12 @@ func TestAnAudioGraphTakesTheFramesOwnLayout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	sd, err := d.NewStreamDecoder(d.AudioStream().Index, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer sd.Close()
+	defer func() { _ = sd.Close() }()
 	var g *FilterGraph
 	samples := 0
 	take := func(out []*Frame) {
@@ -105,7 +105,7 @@ func TestAMultiFilterAudioChainLinksFirstToSourceAndLastToSink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("atrim,aformat: %v", err)
 	}
-	defer g.Close()
+	defer func() { _ = g.Close() }()
 	samples := 0
 	take := func(out []*Frame) {
 		for _, o := range out {

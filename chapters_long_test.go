@@ -29,7 +29,7 @@ func TestChapterTimesPastTheInt64MicrosecondRange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	ch := d.GetChapters()
 	if len(ch) != 2 {
 		t.Fatalf("got %d chapters, want 2", len(ch))

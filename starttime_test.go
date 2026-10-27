@@ -19,7 +19,7 @@ func TestDecoderReportsTheInputsStartTime(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer d.Close()
+			defer func() { _ = d.Close() }()
 			if got := d.StartTime(); got < want-50*time.Millisecond || got > want+50*time.Millisecond {
 				t.Errorf("StartTime %v, want about %v", got, want)
 			}

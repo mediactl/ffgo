@@ -51,7 +51,7 @@ func TestDataStreams_DetectAndReadPacket(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDecoder failed: %v", err)
 	}
-	defer dec.Close()
+	defer func() { _ = dec.Close() }()
 
 	ds := dec.DataStreams()
 	if len(ds) == 0 {

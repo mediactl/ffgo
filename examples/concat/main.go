@@ -29,7 +29,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to open concat decoder: %v\n", err)
 		os.Exit(1)
 	}
-	defer dec.Close()
+	defer func() { _ = dec.Close() }()
 
 	fmt.Printf("Concat duration: %v\n", dec.Duration())
 	fmt.Printf("Streams: %d\n", dec.NumStreams())

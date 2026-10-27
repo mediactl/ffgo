@@ -681,8 +681,6 @@ const ()
 
 // Struct offsets: the shim's when it matches the loaded FFmpeg, else these (internal/layout).
 var (
-	offsetCtxCodecType   = layout.Offset("AVCodecContext.codec_type", 12)     // enum AVMediaType codec_type
-	offsetCtxCodecID     = layout.Offset("AVCodecContext.codec_id", 24)       // enum AVCodecID codec_id
 	offsetCtxBitRate     = layout.Offset("AVCodecContext.bit_rate", 56)       // int64_t bit_rate
 	offsetCtxFlags       = layout.Offset("AVCodecContext.flags", 76)          // int flags
 	offsetCtxTimeBase    = layout.Offset("AVCodecContext.time_base", 100)     // AVRational time_base

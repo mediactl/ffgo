@@ -39,7 +39,7 @@ func TestNewConcatDecoder_ConcatsVideo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDecoder failed: %v", err)
 	}
-	defer d1.Close()
+	defer func() { _ = d1.Close() }()
 
 	dur1 := d1.DurationMicroseconds()
 	_ = dur1 // duration may be unknown depending on demuxer/container
@@ -57,13 +57,13 @@ func TestNewConcatDecoder_ConcatsVideo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewConcatDecoder failed: %v", err)
 	}
-	defer d2.Close()
+	defer func() { _ = d2.Close() }()
 
 	dur2 := d2.DurationMicroseconds()
 	_ = dur2 // duration is often unknown for concat demuxer; rely on frame count instead.
 
 	// Decode all video frames, ensure monotonic PTS where present and that we got >1 file worth.
-	var lastPTS int64 = avutil.NoPTSValue
+	lastPTS := avutil.NoPTSValue
 	var gotPTS bool
 	count2 := 0
 	for {

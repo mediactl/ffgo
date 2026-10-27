@@ -79,14 +79,14 @@ func SaveFrame(frame Frame, filename string) error {
 	}
 
 	// Convert frame if needed
-	var frameToEncode Frame = frame
+	frameToEncode := frame
 	var scaler *Scaler
 	if pixFmt != targetPixFmt {
 		var err error
 		scaler, err = NewScaler(int(width), int(height), PixelFormat(pixFmt),
 			int(width), int(height), PixelFormat(targetPixFmt), ScaleBilinear)
 		if err != nil {
-			avcodec.Close(codecCtx)
+			_ = avcodec.Close(codecCtx)
 			avcodec.FreeContext(&codecCtx)
 			return err
 		}
@@ -94,8 +94,8 @@ func SaveFrame(frame Frame, filename string) error {
 		// Note: Scale() returns a frame owned by the scaler - don't free it separately
 		frameToEncode, err = scaler.Scale(frame)
 		if err != nil {
-			scaler.Close()
-			avcodec.Close(codecCtx)
+			_ = scaler.Close()
+			_ = avcodec.Close(codecCtx)
 			avcodec.FreeContext(&codecCtx)
 			return err
 		}
@@ -105,9 +105,9 @@ func SaveFrame(frame Frame, filename string) error {
 	packet := avcodec.PacketAlloc()
 	if packet == nil {
 		if scaler != nil {
-			scaler.Close()
+			_ = scaler.Close()
 		}
-		avcodec.Close(codecCtx)
+		_ = avcodec.Close(codecCtx)
 		avcodec.FreeContext(&codecCtx)
 		return errors.New("ffgo: failed to allocate packet")
 	}
@@ -117,9 +117,9 @@ func SaveFrame(frame Frame, filename string) error {
 	if err != nil {
 		avcodec.PacketFree(&packet)
 		if scaler != nil {
-			scaler.Close()
+			_ = scaler.Close()
 		}
-		avcodec.Close(codecCtx)
+		_ = avcodec.Close(codecCtx)
 		avcodec.FreeContext(&codecCtx)
 		return err
 	}
@@ -129,9 +129,9 @@ func SaveFrame(frame Frame, filename string) error {
 	if err != nil {
 		avcodec.PacketFree(&packet)
 		if scaler != nil {
-			scaler.Close()
+			_ = scaler.Close()
 		}
-		avcodec.Close(codecCtx)
+		_ = avcodec.Close(codecCtx)
 		avcodec.FreeContext(&codecCtx)
 		return err
 	}
@@ -143,9 +143,9 @@ func SaveFrame(frame Frame, filename string) error {
 	if packetData == nil || packetSize <= 0 {
 		avcodec.PacketFree(&packet)
 		if scaler != nil {
-			scaler.Close()
+			_ = scaler.Close()
 		}
-		avcodec.Close(codecCtx)
+		_ = avcodec.Close(codecCtx)
 		avcodec.FreeContext(&codecCtx)
 		return errors.New("ffgo: encoder produced no data")
 	}
@@ -157,9 +157,9 @@ func SaveFrame(frame Frame, filename string) error {
 	// Clean up FFmpeg resources first
 	avcodec.PacketFree(&packet)
 	if scaler != nil {
-		scaler.Close() // This frees the internal dstFrame
+		_ = scaler.Close() // This frees the internal dstFrame
 	}
-	avcodec.Close(codecCtx)
+	_ = avcodec.Close(codecCtx)
 	avcodec.FreeContext(&codecCtx)
 
 	// Write to file
@@ -173,7 +173,7 @@ func ExtractFrame(inputPath string, ts time.Duration, outputPath string) error {
 	if err != nil {
 		return err
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	// Seek to the requested timestamp
 	if ts > 0 {
@@ -203,7 +203,7 @@ func GenerateThumbnails(inputPath string, interval time.Duration, maxCount int, 
 	if err != nil {
 		return nil, err
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	duration := decoder.Duration()
 	if duration <= 0 {

@@ -886,12 +886,15 @@ func findShimLibraryAccepting(accept func(path string) (bool, string)) (string, 
 		for _, name := range names {
 			path := filepath.Join(dir, name)
 			if _, err := os.Stat(path); err == nil {
-				if ok, why := accept(path); ok {
+				ok, why := accept(path)
+				if ok {
 					return path, nil
-				} else {
-					rejected = append(rejected, path+": "+why)
 				}
+				rejected = append(rejected, path+": "+why)
 			}
+		}
+		if len(rejected) > 0 {
+			return "", fmt.Errorf("%w: FFGO_SHIM_DIR=%s: %s", ErrShimNotFound, dir, strings.Join(rejected, "; "))
 		}
 		return "", fmt.Errorf("%w: FFGO_SHIM_DIR=%s does not contain %s", ErrShimNotFound, dir, names[0])
 	}
@@ -929,9 +932,10 @@ func findShimLibraryAccepting(accept func(path string) (bool, string)) (string, 
 	// Platform-specific paths
 	switch runtime.GOOS {
 	case "linux":
-		if runtime.GOARCH == "amd64" {
+		switch runtime.GOARCH {
+		case "amd64":
 			searchPaths = append(searchPaths, "/usr/lib/x86_64-linux-gnu")
-		} else if runtime.GOARCH == "arm64" {
+		case "arm64":
 			searchPaths = append(searchPaths, "/usr/lib/aarch64-linux-gnu")
 		}
 	case "darwin":

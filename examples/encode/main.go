@@ -58,7 +58,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to create encoder: %v\n", err)
 		os.Exit(1)
 	}
-	defer encoder.Close()
+	defer func() { _ = encoder.Close() }()
 
 	// Allocate frame
 	frame := ffgo.FrameAlloc()

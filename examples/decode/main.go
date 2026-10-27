@@ -41,7 +41,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to open file: %v\n", err)
 		os.Exit(1)
 	}
-	defer decoder.Close()
+	defer func() { _ = decoder.Close() }()
 
 	// Print file info
 	fmt.Printf("\nFile: %s\n", inputFile)
