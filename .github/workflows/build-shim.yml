@@ -1,6 +1,20 @@
 # Build ffshim for all supported platforms
 # This workflow builds the shim library on native runners for maximum compatibility
+#
+# The two Linux shims are built against BtbN's FFmpeg 9.0 shared build (the
+# release the mediactl fork supports; see ffmpeg9.yml), not the runner's
+# distribution packages: a shim reads FFmpeg's structs at the offsets of the
+# headers it was compiled with, and the arm64 job's multiarch apt install
+# broke on 2026-10-27 when ubuntu-latest became 26.04 and ports.ubuntu.com
+# lagged the amd64 archive, so apt wanted to downgrade 109 amd64 packages
+# ("Packages were downgraded and -y was used without --allow-downgrades").
+# The tarball's .pc files are relocatable (prefix=${pcfiledir}/../..), so
+# pkg-config pointed at its lib/pkgconfig serves native and cross builds alike.
 name: Build Shim
+
+env:
+  FFMPEG_BRANCH: "9.0"
+  FFMPEG_RELEASE: latest
 
 on:
   push:
@@ -33,17 +47,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install FFmpeg development libraries
+      - name: Install FFmpeg ${{ env.FFMPEG_BRANCH }} shared libraries and headers
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libavcodec-dev libavformat-dev libavutil-dev libavdevice-dev
+          url="https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_RELEASE}/ffmpeg-n${FFMPEG_BRANCH}-latest-linux64-gpl-shared-${FFMPEG_BRANCH}.tar.xz"
+          curl -fsSL -o /tmp/ffmpeg.tar.xz "$url"
+          sudo mkdir -p /opt/ffmpeg
+          sudo tar -xJf /tmp/ffmpeg.tar.xz --strip-components=1 -C /opt/ffmpeg
+          PKG_CONFIG_LIBDIR=/opt/ffmpeg/lib/pkgconfig pkg-config --modversion libavutil
 
       - name: Build shim
         working-directory: shim
-        run: |
-          make native
-          mkdir -p prebuilt/linux-amd64
-          cp libffshim.so prebuilt/linux-amd64/
+        env:
+          PKG_CONFIG_LIBDIR: /opt/ffmpeg/lib/pkgconfig
+        run: ./build.sh prebuilt
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -57,56 +73,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install cross toolchain + arm64 FFmpeg development libraries
+      - name: Install the arm64 cross toolchain
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu pkg-config
 
-          sudo dpkg --add-architecture arm64
-
-          # The default Ubuntu sources on amd64 runners don't publish arm64 indexes
-          # for security.ubuntu.com, so after enabling multiarch we must explicitly
-          # pin amd64 repos to amd64 and use ports.ubuntu.com for arm64.
-          codename="$(lsb_release -cs)"
-
-          # Ubuntu 24.04 runners use deb822 .sources files by default. If we leave
-          # them enabled after adding arm64, apt will try to fetch arm64 indexes
-          # from security.ubuntu.com and fail with 404s. Replace sources with an
-          # explicit multiarch configuration.
-          sudo rm -f /etc/apt/sources.list.d/*.sources || true
-          sudo rm -f /etc/apt/sources.list.d/*.list || true
-
-          sudo tee /etc/apt/sources.list >/dev/null <<EOF
-          deb [arch=amd64] http://archive.ubuntu.com/ubuntu ${codename} main restricted universe multiverse
-          deb [arch=amd64] http://archive.ubuntu.com/ubuntu ${codename}-updates main restricted universe multiverse
-          deb [arch=amd64] http://archive.ubuntu.com/ubuntu ${codename}-backports main restricted universe multiverse
-          deb [arch=amd64] http://security.ubuntu.com/ubuntu ${codename}-security main restricted universe multiverse
-          EOF
-
-          sudo tee /etc/apt/sources.list.d/arm64-ports.list >/dev/null <<EOF
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports ${codename} main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports ${codename}-updates main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports ${codename}-backports main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports ${codename}-security main restricted universe multiverse
-          EOF
-
-          sudo apt-get update
-
-          # Install arm64 FFmpeg dev libs (used by the cross linker).
-          sudo apt-get install -y libavutil-dev:arm64 libavcodec-dev:arm64 libavformat-dev:arm64
+      - name: Install arm64 FFmpeg ${{ env.FFMPEG_BRANCH }} shared libraries and headers
+        # The arm64 tarball is only linked against, never run: its libraries
+        # resolve the shim's symbols for the cross linker, and its headers are
+        # the struct layouts the shim is compiled with.
+        run: |
+          url="https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_RELEASE}/ffmpeg-n${FFMPEG_BRANCH}-latest-linuxarm64-gpl-shared-${FFMPEG_BRANCH}.tar.xz"
+          curl -fsSL -o /tmp/ffmpeg.tar.xz "$url"
+          sudo mkdir -p /opt/ffmpeg-arm64
+          sudo tar -xJf /tmp/ffmpeg.tar.xz --strip-components=1 -C /opt/ffmpeg-arm64
+          PKG_CONFIG_LIBDIR=/opt/ffmpeg-arm64/lib/pkgconfig pkg-config --modversion libavutil
 
       - name: Build shim
         working-directory: shim
         env:
-          CC: aarch64-linux-gnu-gcc
-          PKG_CONFIG: pkg-config
-          PKG_CONFIG_LIBDIR: /usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
+          PKG_CONFIG_LIBDIR: /opt/ffmpeg-arm64/lib/pkgconfig
         run: |
+          libs="libavutil libavcodec libavformat libavdevice libavfilter"
           mkdir -p prebuilt/linux-arm64
           aarch64-linux-gnu-gcc -shared -fPIC -Wall -Wextra -O2 \
-            $(pkg-config --cflags libavutil libavcodec libavformat) \
+            -DFFSHIM_HAVE_AVDEVICE=1 -DFFSHIM_HAVE_AVFILTER=1 \
+            $(pkg-config --cflags $libs) \
             -o prebuilt/linux-arm64/libffshim.so ffshim.c \
-            $(pkg-config --libs libavutil libavcodec libavformat)
+            $(pkg-config --libs $libs)
+          file prebuilt/linux-arm64/libffshim.so
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
