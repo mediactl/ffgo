@@ -5,6 +5,7 @@ package ffgo
 import (
 	"errors"
 	"fmt"
+	"github.com/obinnaokechukwu/ffgo/internal/bindings"
 	"regexp"
 	"runtime"
 	"strings"
@@ -163,7 +164,7 @@ func (g *FilterGraph) setupVideoFilters(cfg FilterGraphConfig) error {
 		return errors.New("ffgo: buffer filter not found")
 	}
 
-	srcArgs := videoBufferArgs(cfg)
+	srcArgs := videoBufferArgs(cfg, bufferSrcHasColorOptions())
 
 	var err error
 	if cfg.HWFramesCtx != nil {
@@ -188,6 +189,9 @@ func (g *FilterGraph) setupVideoFilters(cfg FilterGraphConfig) error {
 	}
 	if cfg.InputSideData != nil {
 		if err := shim.BufferSrcSetSideData(g.bufferSrc, cfg.InputSideData.ptr); err != nil {
+			if errors.Is(err, shim.ErrENOSYS) {
+				return fmt.Errorf("%w: side data on a buffer source (FFmpeg 7.1)", ErrNotSupported)
+			}
 			return err
 		}
 	}
@@ -226,7 +230,7 @@ func (g *FilterGraph) setupVideoFilters(cfg FilterGraphConfig) error {
 }
 
 // videoBufferArgs is the buffer source's argument string.
-func videoBufferArgs(cfg FilterGraphConfig) string {
+func videoBufferArgs(cfg FilterGraphConfig, colorOptions bool) string {
 	tb := cfg.TimeBase
 	if tb.Num == 0 {
 		tb = Rational{Num: 1, Den: 90000}
@@ -237,10 +241,20 @@ func videoBufferArgs(cfg FilterGraphConfig) string {
 	}
 	args := fmt.Sprintf("video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
 		cfg.Width, cfg.Height, int(cfg.PixelFmt), tb.Num, tb.Den, sar.Num, sar.Den)
-	if cfg.ColorSpace != 0 || cfg.ColorRange != 0 {
+	if colorOptions && (cfg.ColorSpace != 0 || cfg.ColorRange != 0) {
 		args += fmt.Sprintf(":colorspace=%d:range=%d", int(cfg.ColorSpace), int(cfg.ColorRange))
 	}
 	return args
+}
+
+// bufferSrcHasColorOptions reports whether the loaded libavfilter's buffer
+// source takes colorspace and range: FFmpeg 7.0's options, which an older
+// release refuses with AVERROR_OPTION_NOT_FOUND, so there the graph is built
+// without them (as ffmpeg(1) of that release did) and scale falls back to
+// its defaults. An unknown release reads as having them.
+func bufferSrcHasColorOptions() bool {
+	set, ok := bindings.LoadedVersionSet()
+	return !ok || set.FFmpeg >= 7
 }
 
 // linkFilterChain parses a filter string and creates/links filters manually.
@@ -401,6 +415,9 @@ func (g *FilterGraph) setupAudioFilters(cfg FilterGraphConfig) error {
 	}
 	if cfg.InputSideData != nil {
 		if err := shim.BufferSrcSetSideData(g.bufferSrc, cfg.InputSideData.ptr); err != nil {
+			if errors.Is(err, shim.ErrENOSYS) {
+				return fmt.Errorf("%w: side data on a buffer source (FFmpeg 7.1)", ErrNotSupported)
+			}
 			return err
 		}
 	}

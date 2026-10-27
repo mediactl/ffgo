@@ -4,6 +4,7 @@ package ffgo
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -72,7 +73,9 @@ func downmixPCM(t *testing.T, path string, withSideData bool) []byte {
 				cfg.InputSideData = &f
 			}
 			var err error
-			if g, err = NewFilterGraph(cfg); err != nil {
+			if g, err = NewFilterGraph(cfg); errors.Is(err, ErrNotSupported) {
+				t.Skipf("side data on a buffer source needs FFmpeg 7.1: %v", err)
+			} else if err != nil {
 				t.Fatal(err)
 			}
 		}

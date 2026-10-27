@@ -3,6 +3,7 @@
 package ffgo
 
 import (
+	"github.com/obinnaokechukwu/ffgo/internal/bindings"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -35,6 +36,16 @@ func requireShim(t *testing.T) {
 	}
 	if !layout.ShimLoaded() {
 		t.Skip("no shim matching the loaded FFmpeg release")
+	}
+}
+
+// skipBelowFFmpeg skips the test when the loaded FFmpeg is older than the
+// release that introduced what it exercises (the distribution jobs of
+// ffmpeg9.yml run Debian 12's 5.1 and Ubuntu 24.04's 6.1).
+func skipBelowFFmpeg(t *testing.T, release int, what string) {
+	t.Helper()
+	if set, ok := bindings.LoadedVersionSet(); ok && set.FFmpeg < release {
+		t.Skipf("%s needs FFmpeg %d; this is FFmpeg %d", what, release, set.FFmpeg)
 	}
 }
 

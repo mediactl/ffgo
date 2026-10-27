@@ -1,0 +1,9 @@
+# golangci-lint v2. govet's unsafeptr is off for the same reason ci.yml's
+# own `go vet -unsafeptr=false` step gives: purego passes C pointers as
+# uintptr on purpose.
+version: "2"
+linters:
+  settings:
+    govet:
+      disable:
+        - unsafeptr

@@ -247,7 +247,11 @@ func TestStreamInfoReadsWhatFFprobePrints(t *testing.T) {
 
 func TestProfileUnknownMatchesTheHeaders(t *testing.T) {
 	requireShim(t)
-	if v, ok := shim.EnumValue("AV_PROFILE_UNKNOWN"); !ok || v != ProfileUnknown {
+	v, ok := shim.EnumValue("AV_PROFILE_UNKNOWN")
+	if !ok {
+		v, ok = shim.EnumValue("FF_PROFILE_UNKNOWN") // its name before FFmpeg 6.1
+	}
+	if !ok || v != ProfileUnknown {
 		t.Fatalf("AV_PROFILE_UNKNOWN: headers %d (known %v), ffgo %d", v, ok, ProfileUnknown)
 	}
 }

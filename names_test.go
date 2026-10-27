@@ -4,6 +4,7 @@ package ffgo
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -16,6 +17,13 @@ func TestNamesAsFFprobePrintsThem(t *testing.T) {
 	run(t, "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
 		"-f", "lavfi", "-i", "testsrc2=size=64x64:rate=25:duration=1,format=yuv420p10le,setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc:range=tv",
 		"-c:v", "ffv1", path)
+	// FFmpeg 5.1's ffmpeg writes none of setparams' tags into this clip, at
+	// the stream level either (Debian 12, 2026-10-27), so there is nothing
+	// for the decoder to name.
+	if tags := run(t, "ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+		"stream=color_primaries", "-of", "csv=p=0", path); strings.TrimSpace(tags) == "unknown" {
+		t.Skip("this ffmpeg wrote no colour tags into the ffv1 clip")
+	}
 	d, err := NewDecoder(path)
 	if err != nil {
 		t.Fatal(err)

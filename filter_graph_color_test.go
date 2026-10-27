@@ -11,13 +11,16 @@ import (
 
 func TestVideoBufferArgs(t *testing.T) {
 	base := FilterGraphConfig{Width: 128, Height: 72, PixelFmt: PixelFormat(0), TimeBase: NewRational(1, 1000), SAR: NewRational(1, 1)}
-	if got, want := videoBufferArgs(base), "video_size=128x72:pix_fmt=0:time_base=1/1000:pixel_aspect=1/1"; got != want {
+	if got, want := videoBufferArgs(base, true), "video_size=128x72:pix_fmt=0:time_base=1/1000:pixel_aspect=1/1"; got != want {
 		t.Errorf("no colour: got %q, want %q", got, want)
 	}
 	c := base
 	c.ColorSpace, c.ColorRange = ColorSpace(1), ColorRangeMPEG
-	if got, want := videoBufferArgs(c), "video_size=128x72:pix_fmt=0:time_base=1/1000:pixel_aspect=1/1:colorspace=1:range=1"; got != want {
+	if got, want := videoBufferArgs(c, true), "video_size=128x72:pix_fmt=0:time_base=1/1000:pixel_aspect=1/1:colorspace=1:range=1"; got != want {
 		t.Errorf("BT.709 limited: got %q, want %q", got, want)
+	}
+	if got, want := videoBufferArgs(c, false), "video_size=128x72:pix_fmt=0:time_base=1/1000:pixel_aspect=1/1"; got != want {
+		t.Errorf("BT.709 limited before FFmpeg 7: got %q, want %q", got, want)
 	}
 }
 
@@ -25,6 +28,7 @@ func TestVideoBufferArgs(t *testing.T) {
 // ffmpeg(1) configures from the first frame's colorspace and range.
 func TestAVideoGraphConvertsWithTheFramesColorspace(t *testing.T) {
 	requireShim(t)
+	skipBelowFFmpeg(t, 7, "the buffer source's colorspace and range options")
 	path := gopClip(t, "mkv") // BT.709, limited range
 	ref := filepath.Join(t.TempDir(), "ref.rgb")
 	run(t, "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", path, "-map", "0:v:0", "-frames:v", "1",

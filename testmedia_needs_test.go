@@ -124,6 +124,9 @@ func writeNeedsClip(t *testing.T, path string, src, aud *Decoder) {
 		SideData:     map[FrameSideDataType][]byte{FrameSideMasteringDisplay(): md, FrameSideContentLightLevel(): cll},
 		GlobalHeader: m.NeedsGlobalHeader(),
 	})
+	if errors.Is(err, ErrNotSupported) {
+		t.Skipf("encoder side data needs FFmpeg 7: %v", err)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
